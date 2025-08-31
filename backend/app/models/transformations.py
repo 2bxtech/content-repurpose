@@ -31,6 +31,7 @@ class Transformation(TransformationBase):
     user_id: uuid.UUID
     status: TransformationStatus = TransformationStatus.PENDING
     result: Optional[str] = None
+    task_id: Optional[str] = None  # Celery task ID for tracking
     created_at: datetime
     updated_at: datetime
     

@@ -75,6 +75,79 @@ services:
     networks:
       - content-repurpose-network
 
+  # Content Repurpose API
+  api:
+    build: .
+    container_name: content-repurpose-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      DEBUG: "true"
+      SECRET_KEY: dev_secret_key_change_in_production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - content-repurpose-network
+
+  # Celery Worker for Background Processing
+  celery-worker:
+    build: .
+    container_name: content-repurpose-celery-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      DEBUG: "true"
+      SECRET_KEY: dev_secret_key_change_in_production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    command: celery -A app.core.celery_app worker --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-network
+
+  # Celery Beat for Periodic Tasks
+  celery-beat:
+    build: .
+    container_name: content-repurpose-celery-beat
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+      DEBUG: "true"
+      SECRET_KEY: dev_secret_key_change_in_production
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    command: celery -A app.core.celery_app beat --loglevel=info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-network
+
 volumes:
   postgres_data:
     driver: local
