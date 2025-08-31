@@ -57,14 +57,16 @@ class RateLimitMiddleware:
         path = request.url.path
         ip_address = self._get_client_ip(request)
         
-        # Determine rate limit based on endpoint
-        if "/auth/" in path:
+        # Determine rate limit based on endpoint - be more specific
+        if path in ["/api/auth/token", "/api/auth/register", "/api/auth/change-password"]:
+            # Only apply strict auth rate limiting to authentication endpoints
             limit = settings.RATE_LIMIT_AUTH_ATTEMPTS
             limit_type = "auth"
         elif "/transformations" in path:
             limit = settings.RATE_LIMIT_TRANSFORMATIONS
             limit_type = "transformations"
         else:
+            # More relaxed rate limiting for other API endpoints
             limit = settings.RATE_LIMIT_API_CALLS
             limit_type = "api"
         

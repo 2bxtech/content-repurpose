@@ -155,11 +155,11 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
     
     # Create tokens
     access_token = auth_service.create_access_token(
-        data={"sub": user["id"], "email": user["email"]}
+        data={"sub": str(user["id"]), "email": user["email"]}
     )
     
     refresh_token = auth_service.create_refresh_token(
-        data={"sub": user["id"], "email": user["email"]}
+        data={"sub": str(user["id"]), "email": user["email"]}
     )
     
     # Create session
@@ -206,7 +206,7 @@ async def refresh_access_token(refresh_request: RefreshTokenRequest, request: Re
     
     # Create new access token
     access_token = auth_service.create_access_token(
-        data={"sub": user["id"], "email": user["email"]}
+        data={"sub": str(user["id"]), "email": user["email"]}
     )
     
     logger.info(f"Token refreshed for user: {user['email']} (ID: {user['id']})")

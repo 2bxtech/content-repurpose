@@ -107,7 +107,7 @@ class AuthService:
                 return None
             
             return TokenData(
-                user_id=payload.get("sub"),
+                user_id=int(payload.get("sub")),  # Convert back to int
                 email=payload.get("email"),
                 jti=jti,
                 token_type=payload.get("type")

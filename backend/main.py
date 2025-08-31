@@ -3,7 +3,6 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from app.api.routes import auth, documents, transformations, health
 from app.core.config import settings
@@ -27,38 +26,31 @@ async def lifespan(app: FastAPI):
     # Initialize Redis connection
     try:
         await redis_service.connect()
-        logger.info("Redis connection established")
+        if redis_service.is_connected():
+            logger.info("Redis connection established")
+        else:
+            logger.warning("Redis not available - continuing without Redis")
     except Exception as e:
-        logger.warning(f"Redis connection failed: {str(e)}")
+        logger.warning(f"Redis connection failed: {str(e)} - continuing without Redis")
         if settings.ENVIRONMENT == "production":
             raise
     
-    yield
+    yield        
+    
+    try:
+        await redis_service.disconnect()  # or whatever cleanup method exists
+        logger.info("Redis connection closed")
+    except Exception as e:
+        logger.warning(f"Redis cleanup failed: {str(e)}")
     
     # Shutdown
     logger.info("Shutting down Content Repurposing Tool API")
-from app.core.database import init_db, close_db
-from app.services.redis_service import redis_service
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan events"""
-    # Startup
-    await init_db()
-    await redis_service.connect()
-    yield
-    # Shutdown
-    await redis_service.disconnect()
-    await close_db()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Production-grade Content Repurposing Tool API with JWT refresh tokens, session management, and rate limiting",
     version="2.0.0",
     lifespan=lifespan
-    description="Content Repurposing Tool API - Production Ready",
-    version="1.0.0",
-    lifespan=lifespan,
 )
 
 # Add rate limiting middleware

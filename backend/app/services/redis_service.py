@@ -29,7 +29,9 @@ class RedisService:
             self.redis_client.ping()
             logger.info("Redis connection established")
         except Exception as e:
-            logger.error(f"Failed to connect to Redis: {str(e)}")
+            logger.warning(f"Failed to connect to Redis: {str(e)}")
+            logger.warning("Running without Redis - some features will be limited")
+            self.redis_client = None
             # In development, we can continue without Redis, but log the issue
             if settings.ENVIRONMENT == "production":
                 raise
@@ -37,6 +39,16 @@ class RedisService:
     async def connect(self):
         """Async method to establish Redis connection for FastAPI lifespan"""
         self._connect()
+    
+    async def disconnect(self):
+        """Async method to close Redis connection for FastAPI lifespan"""
+        try:
+            if self.redis_client:
+                # For synchronous Redis client, we don't need to close it explicitly
+                self.redis_client = None
+                logger.info("Redis connection closed")
+        except Exception as e:
+            logger.error(f"Error closing Redis connection: {str(e)}")
     
     def is_connected(self) -> bool:
         """Check if Redis is connected"""
