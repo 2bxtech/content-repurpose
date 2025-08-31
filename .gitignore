@@ -1,4 +1,13 @@
 # Content Repurposing Tool .gitignore
+docs/
+*.txt
+*.md
+*.MD
+*.docx
+*.diff
+*.DIFF
+*.patch
+*.PATCH
 
 # Documentation and Planning (exclude from version control)
 docs/

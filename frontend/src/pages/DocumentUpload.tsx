@@ -12,7 +12,7 @@ const DocumentUpload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,41 +27,41 @@ const DocumentUpload: React.FC = () => {
       setError('Title is required');
       return false;
     }
-    
+
     if (!selectedFile) {
       setError('Please select a file to upload');
       return false;
     }
-    
+
     // Check file extension
     const allowedExtensions = ['pdf', 'docx', 'txt', 'md'];
     const fileExt = selectedFile.name.split('.').pop()?.toLowerCase();
-    
+
     if (!fileExt || !allowedExtensions.includes(fileExt)) {
       setError(`File type not supported. Allowed types: ${allowedExtensions.join(', ')}`);
       return false;
     }
-    
+
     // Check file size (10MB max)
     const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     if (selectedFile.size > maxSize) {
       setError('File is too large. Maximum size is 10MB');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const formData = new FormData();
       formData.append('title', title);
@@ -71,7 +71,7 @@ const DocumentUpload: React.FC = () => {
       if (selectedFile) {
         formData.append('file', selectedFile);
       }
-      
+
       const response = await uploadDocument(formData);
       navigate(`/documents/${response.id}`);
     } catch (err: any) {
@@ -88,13 +88,13 @@ const DocumentUpload: React.FC = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Upload Document
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
           </Alert>
         )}
-        
+
         <Box component="form" onSubmit={handleSubmit}>
           <TextField
             label="Document Title"
@@ -105,7 +105,7 @@ const DocumentUpload: React.FC = () => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          
+
           <TextField
             label="Description (Optional)"
             variant="outlined"
@@ -116,7 +116,7 @@ const DocumentUpload: React.FC = () => {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
-          
+
           <Box sx={{ mt: 3, mb: 3 }}>
             <input
               accept=".pdf,.docx,.txt,.md"
@@ -130,18 +130,18 @@ const DocumentUpload: React.FC = () => {
                 Select File
               </Button>
             </label>
-            
+
             {selectedFile && (
               <Typography variant="body2" sx={{ mt: 1 }}>
                 Selected file: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </Typography>
             )}
-            
+
             <FormHelperText>
               Supported file types: PDF, DOCX, TXT, MD. Maximum size: 10MB
             </FormHelperText>
           </Box>
-          
+
           <Button
             type="submit"
             variant="contained"
