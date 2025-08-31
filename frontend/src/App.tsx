@@ -4,7 +4,7 @@ import { ThemeProvider, CssBaseline, Container } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 
 // Context providers
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 
 // Pages
 import Login from './pages/Login';

@@ -3,14 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Typography, Box, Paper, FormControl, InputLabel,
   MenuItem, Select, TextField, Button, Alert, CircularProgress,
-  Divider, SelectChangeEvent, Grid
-} from '@mui/material';
+  Divider, SelectChangeEvent} from '@mui/material';
 import { getDocument } from '../services/documentService';
 import { createTransformation } from '../services/transformationService';
 import { TransformationType, Document } from '../types';
 import type { TransformationCreate } from '../types';
 
-const TransformationCreate: React.FC = () => {
+const TransformationCreatePage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
   
@@ -299,4 +298,4 @@ const TransformationCreate: React.FC = () => {
   );
 };
 
-export default TransformationCreate;
+export default TransformationCreatePage;
