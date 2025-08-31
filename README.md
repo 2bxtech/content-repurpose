@@ -1,6 +1,6 @@
 _Under Development_
 
-# Content Repurposing Too## 🏗️ Architecture
+# Content Repurposing Tool##
 
 **Current (MVP)**:
 ```
@@ -96,12 +96,6 @@ npm start
 2. Register account
 3. Upload a document
 4. Create transformation
-
-## 📖 Documentation
-
-- **[API Documentation](docs/API.md)** - Complete API reference
-- **[Implementation Guide](IMPLEMENTATION_GUIDE.md)** - Setup and production roadmap  
-- **[Architecture Overview](docs/ARCHITECTURE.md)** - System design details
 
 ### Interactive API Docs
 - **Swagger UI**: http://localhost:8000/docs
