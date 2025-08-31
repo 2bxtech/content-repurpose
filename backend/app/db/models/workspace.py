@@ -31,5 +31,5 @@ class Workspace(BaseModel, WorkspaceMixin):
     # Performance indexes
     __table_args__ = (
         Index("idx_workspace_slug_active", "slug", postgresql_where=Column("deleted_at").is_(None)),
-        WorkspaceMixin.create_workspace_index("workspaces"),
+        WorkspaceMixin.create_active_records_index("workspaces"),
     )

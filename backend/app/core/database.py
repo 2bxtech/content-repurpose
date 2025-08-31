@@ -13,13 +13,14 @@ def create_engine():
     """Create database engine with production-grade settings"""
     global engine, async_session_factory
     
-    if not settings.DATABASE_URL:
+    database_url = settings.get_database_url()
+    if not database_url:
         logger.warning("DATABASE_URL not configured, using in-memory storage")
         return None, None
     
     # Async engine with production-grade pooling
     engine = create_async_engine(
-        settings.DATABASE_URL,
+        database_url,
         poolclass=QueuePool,
         pool_size=20,          # Base connections
         max_overflow=30,       # Additional connections under load

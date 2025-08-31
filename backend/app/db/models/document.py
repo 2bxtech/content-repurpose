@@ -28,7 +28,7 @@ class Document(BaseModel, WorkspaceMixin):
     
     # Content extraction (Enhanced in Phase 1)
     extracted_text = Column(Text)
-    metadata = Column(JSONB, default={})
+    doc_metadata = Column(JSONB, default={})
     
     # Status tracking
     status = Column(SQLEnum(DocumentStatus), default=DocumentStatus.PENDING)

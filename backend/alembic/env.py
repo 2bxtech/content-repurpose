@@ -11,8 +11,11 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import the configuration and models
-from app.core.config import settings
+from app.core.config import Settings
 from app.core.models import Base
+
+# Create settings instance
+settings = Settings()
 
 # Import all models to ensure they're registered with SQLAlchemy
 from app.db.models.workspace import Workspace
@@ -25,8 +28,16 @@ from app.db.models.transformation import Transformation
 config = context.config
 
 # Override the sqlalchemy.url with our DATABASE_URL from environment
-if settings.DATABASE_URL:
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+if settings.DATABASE_URL_SYNC:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)
+elif settings.DATABASE_URL:
+    # Convert async URL to sync URL for Alembic
+    sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    config.set_main_option("sqlalchemy.url", sync_url)
+else:
+    # Use the constructed sync URL directly
+    sync_url = f"postgresql+psycopg2://{settings.DATABASE_USER}:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOST}:{settings.DATABASE_PORT}/{settings.DATABASE_NAME}"
+    config.set_main_option("sqlalchemy.url", sync_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
