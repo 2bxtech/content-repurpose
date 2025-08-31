@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, documents, transformations, health
+from app.api.routes import auth, documents, transformations, health, workspaces
 from app.core.config import settings
 from app.services.redis_service import redis_service
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -69,6 +69,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api", tags=["authentication"])
+app.include_router(workspaces.router, prefix="/api", tags=["workspaces"])
 app.include_router(documents.router, prefix="/api", tags=["documents"])
 app.include_router(transformations.router, prefix="/api", tags=["transformations"])
 

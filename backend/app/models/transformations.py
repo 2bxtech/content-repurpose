@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+import uuid
 
 class TransformationType(str, Enum):
     BLOG_POST = "blog_post"
@@ -18,7 +19,7 @@ class TransformationStatus(str, Enum):
     FAILED = "failed"
 
 class TransformationBase(BaseModel):
-    document_id: int
+    document_id: uuid.UUID
     transformation_type: TransformationType
     parameters: Optional[Dict[str, Any]] = {}
 
@@ -26,8 +27,8 @@ class TransformationCreate(TransformationBase):
     pass
 
 class Transformation(TransformationBase):
-    id: int
-    user_id: int
+    id: uuid.UUID
+    user_id: uuid.UUID
     status: TransformationStatus = TransformationStatus.PENDING
     result: Optional[str] = None
     created_at: datetime

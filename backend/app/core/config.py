@@ -1,5 +1,5 @@
 import os
-from typing import List, Set
+from typing import List, Set, Optional
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings
 
@@ -46,6 +46,28 @@ class Settings(BaseSettings):
     AI_MAX_TOKENS: int = Field(default=4000, description="Maximum tokens per AI request")
     AI_TEMPERATURE: float = Field(default=0.7, ge=0.0, le=2.0, description="AI response creativity")
     
+    # Database settings
+    DATABASE_HOST: str = Field(default="localhost")
+    DATABASE_PORT: int = Field(default=5433)
+    DATABASE_NAME: str = Field(default="content_repurpose")
+    DATABASE_USER: str = Field(default="postgres")
+    DATABASE_PASSWORD: str = Field(default="postgres")
+    DATABASE_URL: Optional[str] = Field(default=None)
+    
+    # Sync database URL for Alembic migrations
+    DATABASE_URL_SYNC: Optional[str] = Field(default=None)
+    
+    def get_database_url(self, async_driver: bool = True) -> str:
+        """Construct database URL if not provided"""
+        if async_driver and self.DATABASE_URL:
+            return self.DATABASE_URL
+        elif not async_driver and self.DATABASE_URL_SYNC:
+            return self.DATABASE_URL_SYNC
+        
+        # Construct URL
+        driver = "postgresql+asyncpg" if async_driver else "postgresql+psycopg2"
+        return f"{driver}://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+    
     # CORS settings
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -56,6 +78,14 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: Set[str] = {"pdf", "docx", "txt", "md"}
+    
+    # Database settings
+    DATABASE_URL: str = Field(default="", description="PostgreSQL database URL")
+    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "localhost")
+    DATABASE_PORT: int = int(os.getenv("DATABASE_PORT", "5432"))
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "content_repurpose")
+    DATABASE_USER: str = os.getenv("DATABASE_USER", "postgres")
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "postgres")
     
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
@@ -74,6 +104,13 @@ class Settings(BaseSettings):
         if v < 8:
             raise ValueError('Password minimum length must be at least 8')
         return v
+    
+    def get_database_url(self) -> str:
+        """Construct DATABASE_URL if not provided"""
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
+        
+        return f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
     
     class Config:
         env_file = ".env"

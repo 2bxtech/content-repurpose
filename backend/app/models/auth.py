@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+import uuid
 
 class UserRole(str, Enum):
     ADMIN = "admin"
@@ -42,7 +43,7 @@ class UserLogin(BaseModel):
     password: str
 
 class User(UserBase):
-    id: int
+    id: uuid.UUID
     is_active: bool = True
     is_verified: bool = False
     role: UserRole = UserRole.USER
@@ -59,7 +60,7 @@ class Token(BaseModel):
     expires_in: int  # Access token expiry in seconds
 
 class TokenData(BaseModel):
-    user_id: Optional[int] = None
+    user_id: Optional[uuid.UUID] = None
     email: Optional[str] = None
     jti: Optional[str] = None  # JWT ID for token tracking
     token_type: Optional[str] = None  # "access" or "refresh"
@@ -68,7 +69,7 @@ class RefreshTokenRequest(BaseModel):
     refresh_token: str
 
 class UserSession(BaseModel):
-    user_id: int
+    user_id: uuid.UUID
     refresh_token_jti: str
     created_at: datetime
     last_activity: datetime
@@ -105,7 +106,7 @@ class PasswordChangeRequest(BaseModel):
         return v
 
 class UserProfile(BaseModel):
-    id: int
+    id: uuid.UUID
     email: EmailStr
     username: str
     is_active: bool

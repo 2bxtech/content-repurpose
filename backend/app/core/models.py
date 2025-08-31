@@ -31,8 +31,17 @@ class WorkspaceMixin:
     
     @classmethod
     def create_workspace_index(cls, table_name: str):
+        """Create workspace index for tenant isolation - only for tables with workspace_id"""
         return Index(
             f"idx_{table_name}_workspace_active",
             "workspace_id",
+            postgresql_where=Column("deleted_at").is_(None)
+        )
+    
+    @classmethod
+    def create_active_records_index(cls, table_name: str):
+        """Create index for active (non-deleted) records"""
+        return Index(
+            f"idx_{table_name}_active",
             postgresql_where=Column("deleted_at").is_(None)
         )
