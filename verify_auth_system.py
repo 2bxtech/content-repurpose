@@ -52,7 +52,7 @@ async def test_authentication_system():
             
             # First try weak password (should fail)
             weak_user = {
-                "email": "weaktest@example.com",
+                "email": "weaktestuser@example.local",
                 "username": "weakuser",
                 "password": "weak123"
             }
@@ -66,9 +66,9 @@ async def test_authentication_system():
 
             # Now try strong password
             strong_user = {
-                "email": "test@example.com",
+                "email": "testuser@example.local",
                 "username": "testuser", 
-                "password": "SecureTestPassword123!"
+                "password": "TestPassword123!Example"
             }
             response = await client.post(f"{BASE_URL}/api/auth/register", json=strong_user)
             if response.status_code == 201:
@@ -83,8 +83,8 @@ async def test_authentication_system():
             # Test 4: JWT Login with Refresh Tokens
             print("\n4. Testing JWT login with refresh tokens...")
             login_data = {
-                "username": "test@example.com",
-                "password": "SecureTestPassword123!"
+                "username": "testuser@example.local",
+                "password": "TestPassword123!Example"
             }
             response = await client.post(f"{BASE_URL}/api/auth/token", data=login_data)
             if response.status_code == 200:

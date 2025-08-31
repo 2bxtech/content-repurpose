@@ -30,7 +30,7 @@ async def quick_auth_test():
             
             # Strong password test
             strong_user = {
-                "email": "quicktest@example.com",
+                "email": "quicktestuser@example.local",
                 "username": "quicktestuser", 
                 "password": "QuickTest123!"
             }
@@ -46,7 +46,7 @@ async def quick_auth_test():
             # Test 3: JWT Login
             print("\n3. Testing JWT login...")
             login_data = {
-                "username": "quicktest@example.com",
+                "username": "quicktestuser@example.local",
                 "password": "QuickTest123!"
             }
             response = await client.post(f"{BASE_URL}/api/auth/token", data=login_data)

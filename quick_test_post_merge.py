@@ -49,9 +49,9 @@ def test_basic_functionality():
         # Test 5: User Registration (Enhanced Validation)
         print("\n4. Testing enhanced user registration...")
         test_user = {
-            "email": "test@example.com",
+            "email": "testuser@example.local",
             "username": "testuser",
-            "password": "SecureTestPassword123!"
+            "password": "ExampleTestPassword123!"
         }
         response = requests.post(f"{BASE_URL}/api/auth/register", json=test_user)
         if response.status_code == 201:
@@ -66,8 +66,8 @@ def test_basic_functionality():
         # Test 6: Login with JWT Tokens
         print("\n5. Testing JWT login...")
         login_data = {
-            "username": "test@example.com",
-            "password": "SecureTestPassword123!"
+            "username": "testuser@example.local",
+            "password": "ExampleTestPassword123!"
         }
         response = requests.post(f"{BASE_URL}/api/auth/token", data=login_data)
         if response.status_code == 200:

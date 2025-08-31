@@ -47,7 +47,7 @@ def test_enhanced_authentication():
     
     # Test weak password (should fail)
     weak_user = {
-        "email": "test@example.com",
+        "email": "testuser@example.local",
         "username": "testuser",
         "password": "weak"
     }
@@ -56,9 +56,9 @@ def test_enhanced_authentication():
     
     # Test strong password (should succeed)
     strong_user = {
-        "email": "test@example.com", 
+        "email": "testuser@example.local", 
         "username": "testuser",
-        "password": "SecurePassword123!"
+        "password": "ExampleTestPassword123!"
     }
     response = requests.post(f"{BASE_URL}/auth/register", json=strong_user)
     print_response(response, "Strong Password Registration")
@@ -71,8 +71,8 @@ def test_enhanced_authentication():
     print_section("4. Login with JWT Refresh Token Mechanism")
     
     login_data = {
-        "username": "test@example.com",  # OAuth2PasswordRequestForm uses 'username' field
-        "password": "SecurePassword123!"
+        "username": "testuser@example.local",  # OAuth2PasswordRequestForm uses 'username' field
+        "password": "ExampleTestPassword123!"
     }
     response = requests.post(f"{BASE_URL}/auth/token", data=login_data)
     print_response(response, "Login Response")
@@ -133,7 +133,7 @@ def test_enhanced_authentication():
     print_section("9. Secure Password Change")
     
     password_change = {
-        "current_password": "SecurePassword123!",
+        "current_password": "ExampleTestPassword123!",
         "new_password": "NewSecurePassword456@"
     }
     response = requests.post(f"{BASE_URL}/auth/change-password", json=password_change, headers=headers)

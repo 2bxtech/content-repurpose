@@ -32,8 +32,19 @@ class Settings(BaseSettings):
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
     
-    # Anthropic Claude API settings
-    CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
+    # AI Provider Configuration (Flexible multi-provider support)
+    AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local)$")
+    
+    # AI API Keys (configure based on chosen provider)
+    OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
+    CLAUDE_API_KEY: str = Field(default="", description="Anthropic Claude API key") 
+    AZURE_OPENAI_API_KEY: str = Field(default="", description="Azure OpenAI API key")
+    AZURE_OPENAI_ENDPOINT: str = Field(default="", description="Azure OpenAI endpoint")
+    
+    # AI Model Configuration
+    DEFAULT_AI_MODEL: str = Field(default="gpt-4o-mini", description="Default AI model to use")
+    AI_MAX_TOKENS: int = Field(default=4000, description="Maximum tokens per AI request")
+    AI_TEMPERATURE: float = Field(default=0.7, ge=0.0, le=2.0, description="AI response creativity")
     
     # CORS settings
     CORS_ORIGINS: List[str] = [
