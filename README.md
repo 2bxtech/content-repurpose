@@ -1,6 +1,14 @@
-_Under Development_
+# Content Repurposing Tool
 
-# Content Repurposing Tool##
+> _Under Development_
+
+A React application for transforming documents into different content formats using AI.
+
+**Current Status**: MVP (Minimum Viable Product) - Basic functionality working, production features in development.
+
+[![Python](https://img.shields.io/badge/python-3.12+-blue)](https://python.org)
+[![React](https://img.shields.io/badge/react-18.2.0-blue)](https://react.dev)
+[![FastAPI](https://img.shields.io/badge/fastapi-0.104.1-green)](https://fastapi.tiangolo.com)
 
 **Current (MVP)**:
 ```
@@ -9,7 +17,7 @@ React Frontend (localhost:3000)
 FastAPI Backend (localhost:8000)
     ├── In-memory storage (users, documents, transformations)
     ├── Local file system (uploads/)
-    └── Claude API (AI processing)
+    └── AI API (content processing)
 ```
 
 **Target (Production)**:
@@ -19,36 +27,16 @@ React Frontend
 FastAPI Main App + Celery Workers
     ├── PostgreSQL (with Row-Level Security)
     ├── Redis (caching, sessions, background jobs)
-    └── Multi-provider AI (Claude, OpenAI)
+    └── Multi-provider AI (OpenAI, Anthropic, etc.)
 ``` React application for transforming documents into different content formats using AI.
-
-**Current Status**: MVP (Minimum Viable Product) - Basic functionality working, production features in development.
-
-[![Python](https://img.shields.io/badge/python-3.12+-blue)](https://python.org)
-[![React](https://img.shields.io/badge/react-18.2.0-blue)](https://react.dev)
-[![FastAPI](https://img.shields.io/badge/fastapi-0.104.1-green)](https://fastapi.tiangolo.com)
-
-## 🚀 Current Features
-
-### Working (MVP)
-- **File Upload**: PDF, DOCX, TXT, MD support with basic validation
-- **AI Transformations**: 6 content types via Anthropic Claude API
-- **User Authentication**: JWT-based login/registration
-- **Basic UI**: React frontend with Material-UI components
-
-### In Development (Production Roadmap)
-- **Database**: Migrating from in-memory to PostgreSQL with Row-Level Security
-- **Real-time Features**: WebSocket support for collaboration
-- **Enhanced Security**: Refresh tokens, rate limiting, audit logs
-- **File Processing**: Real content extraction from PDF/DOCX
-- **Multi-tenant**: Workspace-based organization
+```
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │    Backend      │    │  External APIs  │
-│   (React/TS)    │◄──►│   (FastAPI)     │◄──►│  (Claude API)   │
+│   (React/TS)    │◄──►│   (FastAPI)     │◄──►│   (AI APIs)     │
 │   Port: 3000    │    │   Port: 8000    │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -60,19 +48,34 @@ FastAPI Main App + Celery Workers
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
+## 🚀 Features
+
+### ✅ Working (MVP)
+- **File Upload**: PDF, DOCX, TXT, MD support with basic validation
+- **AI Transformations**: 6 content types via Anthropic Claude API
+- **User Authentication**: JWT-based login/registration
+- **Basic UI**: React frontend with Material-UI components
+
+### 🚧 In Development (Production Roadmap)
+- **Database**: Migrating from in-memory to PostgreSQL with Row-Level Security
+- **Real-time Features**: WebSocket support for collaboration
+- **Enhanced Security**: Refresh tokens, rate limiting, audit logs
+- **File Processing**: Real content extraction from PDF/DOCX
+- **Multi-tenant**: Workspace-based organization
+
 ## 🚦 Quick Start
 
 ### Prerequisites
 - Python 3.12+
 - Node.js 18+
-- Anthropic Claude API key
+- AI API key (OpenAI, Anthropic, etc.)
 
 ### 1. Clone and Setup
 ```bash
 git clone https://github.com/2bxtech/content-repurpose.git
 cd content-repurpose
 cp .env.example .env
-# Edit .env with your Claude API key
+# Edit .env with your AI API key
 ```
 
 ### 2. Backend
@@ -103,50 +106,18 @@ npm start
 
 ## 🛠️ Development
 
+### Tech Stack
+- **Backend**: FastAPI 0.104.1, Python 3.12+
+- **Frontend**: React 18.2.0, TypeScript, Material-UI
+- **AI**: AI Provider APIs
+- **Storage**: Local filesystem + in-memory data
+
 ### Current Status
 - **MVP**: Basic upload, transform, download workflow
 - **Database**: In-memory dictionaries (not persistent)
 - **File Processing**: Simple file reading (no content extraction)
 - **Authentication**: Basic JWT (no refresh tokens)
 - **Testing**: Manual testing only
-
-### Tech Stack
-- **Backend**: FastAPI 0.104.1, Python 3.12+
-- **Frontend**: React 18.2.0, TypeScript, Material-UI
-- **AI**: Anthropic Claude API
-- **Storage**: Local filesystem + in-memory data
-
-## ️ Development Roadmap
-
-### Week 1-2: Foundation
-- [ ] Migrate to PostgreSQL with Row-Level Security
-- [ ] Real file content extraction (PDF/DOCX)
-- [ ] Enhanced JWT with refresh tokens
-- [ ] Redis integration for caching
-
-### Week 3-4: Production Features
-- [ ] WebSocket support for real-time updates
-- [ ] Celery background processing
-- [ ] Multi-provider AI support (Claude + OpenAI)
-- [ ] Rate limiting and security hardening
-
-### Week 5-6: Polish
-- [ ] Comprehensive testing
-- [ ] Docker deployment
-- [ ] Performance optimization
-- [ ] Production documentation
-
-See [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for detailed implementation steps.
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
 
 ### Development Setup for Contributors
 ```bash
@@ -159,7 +130,29 @@ pytest  # Backend tests
 npm test  # Frontend tests
 ```
 
-## 📊 Current Limitations
+## 🗓️ Development Roadmap
+
+### Week 1-2: Foundation
+- [ ] Migrate to PostgreSQL with Row-Level Security
+- [ ] Real file content extraction (PDF/DOCX)
+- [ ] Enhanced JWT with refresh tokens
+- [ ] Redis integration for caching
+
+### Week 3-4: Production Features
+- [ ] WebSocket support for real-time updates
+- [ ] Celery background processing
+- [ ] Multi-provider AI support (OpenAI, Anthropic, etc.)
+- [ ] Rate limiting and security hardening
+
+### Week 5-6: Polish
+- [ ] Comprehensive testing
+- [ ] Docker deployment
+- [ ] Performance optimization
+- [ ] Production documentation
+
+See [IMPLEMENTATION_GUIDE.md](IMPLEMENTATION_GUIDE.md) for detailed implementation steps.
+
+## ⚠️ Current Limitations
 
 **Data Persistence**: All data lost on server restart (in-memory storage)  
 **File Processing**: Basic file reading, no content extraction from PDFs  
@@ -167,7 +160,7 @@ npm test  # Frontend tests
 **Testing**: Manual testing only, no automated test suite  
 **Deployment**: Development setup only, no production deployment  
 
-These limitations are addressed in the production roadmap.
+*These limitations are addressed in the production roadmap.*
 
 ## 📄 License
 
