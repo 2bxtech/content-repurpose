@@ -32,8 +32,31 @@ class Settings(BaseSettings):
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
     REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
     
+    # Celery settings for background task processing
+    CELERY_BROKER_URL: str = Field(default="")
+    CELERY_RESULT_BACKEND: str = Field(default="")
+    CELERY_TASK_ALWAYS_EAGER: bool = Field(default=False)  # Set to True for testing
+    
+    def get_celery_broker_url(self) -> str:
+        """Construct Celery broker URL"""
+        if self.CELERY_BROKER_URL:
+            return self.CELERY_BROKER_URL
+        
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
+    def get_celery_result_backend(self) -> str:
+        """Construct Celery result backend URL"""
+        if self.CELERY_RESULT_BACKEND:
+            return self.CELERY_RESULT_BACKEND
+        
+        if self.REDIS_PASSWORD:
+            return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+    
     # AI Provider Configuration (Flexible multi-provider support)
-    AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local)$")
+    AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local|mock)$")
     
     # AI API Keys (configure based on chosen provider)
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")

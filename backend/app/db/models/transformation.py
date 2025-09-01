@@ -35,9 +35,11 @@ class Transformation(BaseModel, WorkspaceMixin):
     status = Column(SQLEnum(TransformationStatus), default=TransformationStatus.PENDING)
     result = Column(Text)
     error_message = Column(Text)
+    task_id = Column(String(255))  # Celery task ID for tracking
     
     # AI processing metadata
     ai_provider = Column(String(50))
+    ai_model = Column(String(100))  # AI model used
     tokens_used = Column(Integer)
     processing_time_seconds = Column(Integer)
     

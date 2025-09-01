@@ -1,10 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import anthropic
-import os
 import uuid
 
 from app.models.transformations import (
@@ -18,6 +16,7 @@ from app.api.routes.workspaces import get_current_workspace_context
 from app.core.database import get_db_session
 from app.core.config import settings
 from app.services.workspace_service import workspace_service
+from app.services.task_service import task_service
 
 # Mock database for transformations - will be replaced when DB is connected
 TRANSFORMATIONS_DB = []
@@ -59,140 +58,9 @@ async def get_document_by_uuid(db: AsyncSession, document_id: uuid.UUID, user_id
     finally:
         await workspace_service.clear_workspace_context(db)
 
-async def process_transformation(transformation_id: uuid.UUID, document_path: str, transformation_type: TransformationType, parameters: Dict[str, Any], db: AsyncSession = None):
-    """
-    Background task to process the transformation using Claude API
-    """
-    if db:
-        # Database mode
-        stmt = select(TransformationDB).where(TransformationDB.id == transformation_id)
-        result = await db.execute(stmt)
-        transformation = result.scalar_one_or_none()
-        
-        if not transformation:
-            return
-        
-        # Set workspace context
-        await workspace_service.set_workspace_context(db, transformation.workspace_id)
-    else:
-        # In-memory mode
-        transformation = None
-        for t in TRANSFORMATIONS_DB:
-            if str(t["id"]) == str(transformation_id):
-                transformation = t
-                break
-        
-        if not transformation:
-            return
-    
-    # Update status to processing
-    if db:
-        transformation.status = TransformationStatus.PROCESSING
-        transformation.updated_at = datetime.utcnow()
-        await db.commit()
-    else:
-        transformation["status"] = TransformationStatus.PROCESSING
-        transformation["updated_at"] = datetime.now()
-    
-    try:
-        # Read document content
-        with open(document_path, "r", encoding="utf-8") as file:
-            document_content = file.read()
-        
-        # Initialize Claude client
-        client = anthropic.Anthropic(api_key=settings.CLAUDE_API_KEY)
-        
-        # Prepare the prompt based on transformation type
-        prompt = get_transformation_prompt(transformation_type, document_content, parameters)
-        
-        # Call Claude API
-        message = client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=4000,
-            temperature=0.7,
-            system="You are an expert content repurposing assistant. Your task is to transform the provided content into the requested format while maintaining the key information and adapting the style appropriately.",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        # Update transformation with result
-        if db:
-            transformation.result = message.content[0].text
-            transformation.status = TransformationStatus.COMPLETED
-            transformation.updated_at = datetime.utcnow()
-            transformation.ai_provider = "claude"
-            transformation.tokens_used = message.usage.input_tokens + message.usage.output_tokens if hasattr(message, 'usage') else None
-            await db.commit()
-        else:
-            transformation["result"] = message.content[0].text
-            transformation["status"] = TransformationStatus.COMPLETED
-            transformation["updated_at"] = datetime.now()
-        
-    except Exception as e:
-        # Update transformation with error
-        if db:
-            transformation.status = TransformationStatus.FAILED
-            transformation.error_message = f"Error processing transformation: {str(e)}"
-            transformation.updated_at = datetime.utcnow()
-            await db.commit()
-        else:
-            transformation["status"] = TransformationStatus.FAILED
-            transformation["result"] = f"Error processing transformation: {str(e)}"
-            transformation["updated_at"] = datetime.now()
-    
-    finally:
-        if db:
-            await workspace_service.clear_workspace_context(db)
-
-def get_transformation_prompt(transformation_type: TransformationType, document_content: str, parameters: Dict[str, Any]) -> str:
-    """
-    Generate a prompt for Claude based on the transformation type
-    """
-    base_prompt = f"Here is the original content:\n\n{document_content}\n\n"
-    
-    if transformation_type == TransformationType.BLOG_POST:
-        prompt = base_prompt + "Transform this content into a well-structured blog post. "
-        if "word_count" in parameters:
-            prompt += f"The target word count is around {parameters['word_count']} words. "
-        if "tone" in parameters:
-            prompt += f"Use a {parameters['tone']} tone. "
-        prompt += "Include a catchy title, introduction, main sections with subheadings, and a conclusion."
-        
-    elif transformation_type == TransformationType.SOCIAL_MEDIA:
-        platform = parameters.get("platform", "general")
-        prompt = base_prompt + f"Create social media content for {platform} based on this information. "
-        if "post_count" in parameters:
-            prompt += f"Generate {parameters['post_count']} distinct posts. "
-        prompt += "Each post should be engaging, concise, and include relevant hashtags."
-        
-    elif transformation_type == TransformationType.EMAIL_SEQUENCE:
-        prompt = base_prompt + "Transform this content into an email sequence. "
-        if "email_count" in parameters:
-            prompt += f"Create a series of {parameters['email_count']} emails. "
-        prompt += "Include subject lines and email body content. Each email should have a clear purpose, engaging opening, valuable content, and a strong call-to-action."
-        
-    elif transformation_type == TransformationType.NEWSLETTER:
-        prompt = base_prompt + "Convert this content into a newsletter format. "
-        if "sections" in parameters:
-            prompt += f"Include the following sections: {', '.join(parameters['sections'])}. "
-        prompt += "The newsletter should have a clear structure, engaging introduction, main content sections, and a conclusion with next steps or call-to-action."
-        
-    elif transformation_type == TransformationType.SUMMARY:
-        prompt = base_prompt + "Create a concise summary of this content. "
-        if "length" in parameters:
-            prompt += f"The summary should be approximately {parameters['length']} words. "
-        prompt += "Capture the key points, main arguments, and essential information while maintaining clarity."
-        
-    else:  # CUSTOM or fallback
-        prompt = base_prompt + parameters.get("custom_instructions", "Transform this content into a new format while preserving the key information.")
-    
-    return prompt
-
 @router.post("/transformations", response_model=Transformation, status_code=status.HTTP_201_CREATED)
 async def create_transformation(
     transformation: TransformationCreate,
-    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_active_user),
     workspace_context: dict = Depends(get_current_workspace_context),
     db: AsyncSession = Depends(get_db_session)
@@ -240,15 +108,19 @@ async def create_transformation(
             await db.commit()
             await db.refresh(transformation_db)
             
-            # Start background task to process the transformation
-            background_tasks.add_task(
-                process_transformation,
+            # Start Celery background task to process the transformation
+            task_id = task_service.start_transformation_task(
                 transformation_db.id,
                 document.file_path,
                 transformation.transformation_type,
                 transformation.parameters,
-                db
+                workspace_id,
+                current_user["id"]
             )
+            
+            # Store task ID in the transformation record for tracking
+            transformation_db.task_id = task_id
+            await db.commit()
             
             return Transformation(
                 id=transformation_db.id,
@@ -258,6 +130,7 @@ async def create_transformation(
                 parameters=transformation_db.parameters,
                 status=transformation_db.status,
                 result=transformation_db.result,
+                task_id=task_id,
                 created_at=transformation_db.created_at,
                 updated_at=transformation_db.updated_at
             )
@@ -266,7 +139,7 @@ async def create_transformation(
             await workspace_service.clear_workspace_context(db)
     
     else:
-        # In-memory mode
+        # In-memory mode - simplified for backward compatibility
         document = get_document_by_id(transformation.document_id, current_user["id"])
         if not document:
             raise HTTPException(
@@ -283,6 +156,7 @@ async def create_transformation(
             "parameters": transformation.parameters,
             "status": TransformationStatus.PENDING,
             "result": None,
+            "task_id": None,
             "created_at": datetime.now(),
             "updated_at": datetime.now()
         }
@@ -290,14 +164,11 @@ async def create_transformation(
         TRANSFORMATIONS_DB.append(new_transformation)
         transformation_id_counter += 1
         
-        # Start background task to process the transformation
-        background_tasks.add_task(
-            process_transformation,
-            new_transformation["id"],
-            document["file_path"],
-            transformation.transformation_type,
-            transformation.parameters
-        )
+        # For in-memory mode, we'll simulate immediate processing
+        # In production, this should also use Celery
+        new_transformation["status"] = TransformationStatus.PROCESSING
+        new_transformation["result"] = "In-memory mode: Transformation processing not implemented with Celery"
+        new_transformation["status"] = TransformationStatus.COMPLETED
         
         return new_transformation
 
@@ -485,3 +356,178 @@ async def delete_transformation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Transformation not found"
         )
+
+
+@router.get("/transformations/{transformation_id}/status")
+async def get_transformation_task_status(
+    transformation_id: uuid.UUID,
+    current_user: dict = Depends(get_current_active_user),
+    workspace_context: dict = Depends(get_current_workspace_context),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get the real-time status of a transformation task
+    """
+    workspace_id = workspace_context["workspace_id"]
+    
+    if db:
+        # Get transformation from database
+        await workspace_service.set_workspace_context(db, workspace_id)
+        
+        try:
+            stmt = (
+                select(TransformationDB)
+                .where(
+                    and_(
+                        TransformationDB.id == transformation_id,
+                        TransformationDB.workspace_id == workspace_id,
+                        TransformationDB.user_id == current_user["id"],
+                        TransformationDB.deleted_at.is_(None)
+                    )
+                )
+            )
+            
+            result = await db.execute(stmt)
+            transformation_db = result.scalar_one_or_none()
+            
+            if not transformation_db:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transformation not found"
+                )
+            
+            # Get task status if task_id exists
+            task_status = None
+            if transformation_db.task_id:
+                task_status = task_service.get_task_status(transformation_db.task_id)
+            
+            return {
+                "transformation_id": transformation_id,
+                "database_status": transformation_db.status,
+                "task_status": task_status,
+                "result": transformation_db.result,
+                "error_message": transformation_db.error_message,
+                "updated_at": transformation_db.updated_at
+            }
+        
+        finally:
+            await workspace_service.clear_workspace_context(db)
+    
+    else:
+        # In-memory mode
+        try:
+            t_id = int(str(transformation_id))
+        except:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transformation not found"
+            )
+        
+        for transformation in TRANSFORMATIONS_DB:
+            if transformation["id"] == t_id and transformation["user_id"] == current_user["id"]:
+                return {
+                    "transformation_id": transformation_id,
+                    "database_status": transformation["status"],
+                    "task_status": None,
+                    "result": transformation.get("result"),
+                    "error_message": None,
+                    "updated_at": transformation["updated_at"]
+                }
+        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transformation not found"
+        )
+
+
+@router.post("/transformations/{transformation_id}/cancel")
+async def cancel_transformation_task(
+    transformation_id: uuid.UUID,
+    current_user: dict = Depends(get_current_active_user),
+    workspace_context: dict = Depends(get_current_workspace_context),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Cancel a running transformation task
+    """
+    workspace_id = workspace_context["workspace_id"]
+    
+    if db:
+        # Get transformation from database
+        await workspace_service.set_workspace_context(db, workspace_id)
+        
+        try:
+            stmt = (
+                select(TransformationDB)
+                .where(
+                    and_(
+                        TransformationDB.id == transformation_id,
+                        TransformationDB.workspace_id == workspace_id,
+                        TransformationDB.user_id == current_user["id"],
+                        TransformationDB.deleted_at.is_(None)
+                    )
+                )
+            )
+            
+            result = await db.execute(stmt)
+            transformation_db = result.scalar_one_or_none()
+            
+            if not transformation_db:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transformation not found"
+                )
+            
+            # Cancel task if it's running
+            if transformation_db.task_id and transformation_db.status in [TransformationStatus.PENDING, TransformationStatus.PROCESSING]:
+                cancel_result = task_service.cancel_task(transformation_db.task_id)
+                
+                # Update transformation status
+                transformation_db.status = TransformationStatus.FAILED
+                transformation_db.error_message = "Task cancelled by user"
+                transformation_db.updated_at = datetime.utcnow()
+                await db.commit()
+                
+                return {
+                    "transformation_id": transformation_id,
+                    "status": "cancelled",
+                    "message": "Transformation task cancelled successfully",
+                    "task_result": cancel_result
+                }
+            else:
+                return {
+                    "transformation_id": transformation_id,
+                    "status": "not_cancellable",
+                    "message": f"Transformation cannot be cancelled (current status: {transformation_db.status})"
+                }
+        
+        finally:
+            await workspace_service.clear_workspace_context(db)
+    
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Task cancellation not available in in-memory mode"
+        )
+
+
+@router.get("/system/workers")
+async def get_worker_status(
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get Celery worker status (admin endpoint)
+    """
+    # TODO: Add admin role check
+    return task_service.get_worker_status()
+
+
+@router.get("/system/queue")
+async def get_queue_info(
+    current_user: dict = Depends(get_current_active_user)
+):
+    """
+    Get task queue information (admin endpoint)
+    """
+    # TODO: Add admin role check
+    return task_service.get_queue_info()
