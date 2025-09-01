@@ -4,10 +4,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, documents, transformations, health, workspaces
+from app.api.routes import auth, documents, transformations, health, workspaces, websockets
 from app.core.config import settings
 from app.services.redis_service import redis_service
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.core.websocket_manager import manager
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +29,9 @@ async def lifespan(app: FastAPI):
         await redis_service.connect()
         if redis_service.is_connected():
             logger.info("Redis connection established")
+            # Start WebSocket Redis listener
+            await manager.start_redis_listener()
+            logger.info("WebSocket Redis listener started")
         else:
             logger.warning("Redis not available - continuing without Redis")
     except Exception as e:
@@ -38,6 +42,10 @@ async def lifespan(app: FastAPI):
     yield        
     
     try:
+        # Stop WebSocket Redis listener
+        await manager.stop_redis_listener()
+        logger.info("WebSocket Redis listener stopped")
+        
         await redis_service.disconnect()  # or whatever cleanup method exists
         logger.info("Redis connection closed")
     except Exception as e:
@@ -72,6 +80,7 @@ app.include_router(auth.router, prefix="/api", tags=["authentication"])
 app.include_router(workspaces.router, prefix="/api", tags=["workspaces"])
 app.include_router(documents.router, prefix="/api", tags=["documents"])
 app.include_router(transformations.router, prefix="/api", tags=["transformations"])
+app.include_router(websockets.router, prefix="/api", tags=["websockets"])
 
 @app.get("/", tags=["health"])
 async def root():

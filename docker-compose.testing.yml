@@ -1,0 +1,158 @@
+# Enhanced Docker Compose for Testing
+# Optimized test environment configurations
+
+# Fast Unit Tests - Minimal services
+version: '3.8'
+
+x-test-env: &test-env
+  ENVIRONMENT: testing
+  DEBUG: "true"
+  SECRET_KEY: test_secret_key_for_testing_purposes_only_32_chars_minimum_for_security
+  REFRESH_SECRET_KEY: test_refresh_secret_key_for_testing_purposes_only_32_chars_minimum_for_security
+  CELERY_TASK_ALWAYS_EAGER: "true"
+  AI_PROVIDER: mock
+  OPENAI_API_KEY: test-key
+  ANTHROPIC_API_KEY: test-key
+
+services:
+  # Lightweight PostgreSQL for unit tests
+  postgres-unit:
+    image: postgres:16-alpine
+    container_name: content-repurpose-postgres-unit
+    restart: "no"
+    environment:
+      POSTGRES_DB: content_repurpose_unit_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_unit_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d content_repurpose_unit_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - unit-test-network
+
+  # Lightweight Redis for unit tests
+  redis-unit:
+    image: redis:7-alpine
+    container_name: content-repurpose-redis-unit
+    restart: "no"
+    ports:
+      - "6381:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - unit-test-network
+
+  # Integration test PostgreSQL
+  postgres-integration:
+    image: postgres:16-alpine
+    container_name: content-repurpose-postgres-integration
+    restart: "no"
+    environment:
+      POSTGRES_DB: content_repurpose_integration_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_integration_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d content_repurpose_integration_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - integration-test-network
+
+  # Integration test Redis
+  redis-integration:
+    image: redis:7-alpine
+    container_name: content-repurpose-redis-integration
+    restart: "no"
+    ports:
+      - "6382:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    networks:
+      - integration-test-network
+
+  # Fast API for integration tests
+  api-integration:
+    build:
+      context: ..
+      dockerfile: Dockerfile.test
+    container_name: content-repurpose-api-integration
+    restart: "no"
+    environment:
+      <<: *test-env
+      DATABASE_URL: postgresql+asyncpg://test_user:test_pass@postgres-integration:5432/content_repurpose_integration_test
+      REDIS_URL: redis://redis-integration:6379/1
+      REDIS_HOST: redis-integration
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    ports:
+      - "8003:8000"
+    depends_on:
+      postgres-integration:
+        condition: service_healthy
+      redis-integration:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    networks:
+      - integration-test-network
+
+  # Celery worker for integration tests
+  celery-integration:
+    build:
+      context: ..
+      dockerfile: Dockerfile.test
+    container_name: content-repurpose-celery-integration
+    restart: "no"
+    environment:
+      <<: *test-env
+      DATABASE_URL: postgresql+asyncpg://test_user:test_pass@postgres-integration:5432/content_repurpose_integration_test
+      REDIS_URL: redis://redis-integration:6379/1
+      REDIS_HOST: redis-integration
+      REDIS_PORT: 6379
+      REDIS_DB: 1
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2
+    depends_on:
+      postgres-integration:
+        condition: service_healthy
+      redis-integration:
+        condition: service_healthy
+    networks:
+      - integration-test-network
+
+volumes:
+  postgres_unit_data:
+    driver: local
+  postgres_integration_data:
+    driver: local
+
+networks:
+  unit-test-network:
+    driver: bridge
+  integration-test-network:
+    driver: bridge
+
+# Profiles for different test scenarios
+# (Removed unsupported 'profiles' section for Compose version 3.8)

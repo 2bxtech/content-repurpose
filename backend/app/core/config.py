@@ -102,14 +102,6 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: Set[str] = {"pdf", "docx", "txt", "md"}
     
-    # Database settings
-    DATABASE_URL: str = Field(default="", description="PostgreSQL database URL")
-    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "localhost")
-    DATABASE_PORT: int = int(os.getenv("DATABASE_PORT", "5432"))
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "content_repurpose")
-    DATABASE_USER: str = os.getenv("DATABASE_USER", "postgres")
-    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "postgres")
-    
     # Environment
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
@@ -127,13 +119,6 @@ class Settings(BaseSettings):
         if v < 8:
             raise ValueError('Password minimum length must be at least 8')
         return v
-    
-    def get_database_url(self) -> str:
-        """Construct DATABASE_URL if not provided"""
-        if self.DATABASE_URL:
-            return self.DATABASE_URL
-        
-        return f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
     
     class Config:
         env_file = ".env"
