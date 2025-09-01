@@ -29,3 +29,13 @@ sqlalchemy==2.0.23
 asyncpg==0.29.0
 alembic==1.13.0
 psycopg2-binary==2.9.9
+
+# Phase 6: File Processing Enhancement
+PyPDF2==3.0.1
+python-docx==1.1.0
+pymupdf==1.23.8
+Pillow==10.1.0
+python-magic==0.4.27
+python-magic-bin==0.4.14; platform_system=="Windows"
+clamd==1.0.2
+chardet==5.2.0
