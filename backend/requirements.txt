@@ -17,6 +17,9 @@ redis==5.0.1
 slowapi==0.1.9
 email-validator==2.1.0
 
+# WebSocket support
+websockets==12.0
+
 # Background processing
 celery==5.3.4
 kombu==5.3.4

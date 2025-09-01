@@ -1,7 +1,18 @@
 # Content Repurposing Tool .gitignore
+
+# Testing and diagnostic files (contain personal system information)
+testing/diagnostics/*.json
+testing/results/*.json
+testing/reports/*.json
+testing/performance/*.json
+testing/coverage_html/
+coverage.xml
+report.html
+report.json
+
+# Documentation and Planning (exclude from version control - but allow specific docs)
 docs/
 *.txt
-*.md
 *.MD
 *.docx
 *.diff
@@ -9,11 +20,13 @@ docs/
 *.patch
 *.PATCH
 
-# Documentation and Planning (exclude from version control)
-docs/
-*.txt
-*.md
-*.MD
+# Allow specific documentation files that don't contain sensitive info
+!testing/diagnostics/README.md
+!docs/BULLETPROOF_TESTING_FRAMEWORK.md
+!docs/ENTERPRISE_ENHANCEMENTS_COMPLETE.md
+!docs/STRATEGIC_RESPONSE_TO_CLAUDE_FEEDBACK.md
+!docs/CLAUDE_ONLINE_REVIEW_REQUEST.md
+!docs/PR_DESCRIPTION_GUIDE.md
 
 # Python Backend
 __pycache__/

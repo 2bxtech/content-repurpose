@@ -81,11 +81,15 @@ services:
     container_name: content-repurpose-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/content_repurpose
       REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       ENVIRONMENT: development
       DEBUG: "true"
-      SECRET_KEY: dev_secret_key_change_in_production
+      SECRET_KEY: dev_secret_key_change_in_production_32_chars_minimum_for_security
+      REFRESH_SECRET_KEY: dev_refresh_secret_key_change_in_production_32_chars_minimum_for_security
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     ports:
@@ -110,11 +114,15 @@ services:
     container_name: content-repurpose-celery-worker
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/content_repurpose
       REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       ENVIRONMENT: development
       DEBUG: "true"
-      SECRET_KEY: dev_secret_key_change_in_production
+      SECRET_KEY: dev_secret_key_change_in_production_32_chars_minimum_for_security
+      REFRESH_SECRET_KEY: dev_refresh_secret_key_change_in_production_32_chars_minimum_for_security
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     command: celery -A app.core.celery_app worker --loglevel=info
@@ -132,11 +140,15 @@ services:
     container_name: content-repurpose-celery-beat
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://postgres:postgres_dev_password@postgres:5432/content_repurpose
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres_dev_password@postgres:5432/content_repurpose
       REDIS_URL: redis://redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       ENVIRONMENT: development
       DEBUG: "true"
-      SECRET_KEY: dev_secret_key_change_in_production
+      SECRET_KEY: dev_secret_key_change_in_production_32_chars_minimum_for_security
+      REFRESH_SECRET_KEY: dev_refresh_secret_key_change_in_production_32_chars_minimum_for_security
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     command: celery -A app.core.celery_app beat --loglevel=info

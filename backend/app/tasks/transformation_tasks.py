@@ -10,6 +10,7 @@ from sqlalchemy import select, and_
 import anthropic
 import openai
 import asyncio
+import httpx
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
@@ -19,9 +20,51 @@ from app.db.models.document import Document as DocumentDB
 from app.services.workspace_service import workspace_service
 
 
+async def send_websocket_notification(
+    workspace_id: str,
+    user_id: str,
+    transformation_id: str,
+    message_type: str,
+    data: Dict[str, Any]
+):
+    """
+    Send WebSocket notification to user about transformation progress
+    """
+    try:
+        # Prepare notification payload
+        notification_data = {
+            "type": message_type,
+            "data": {
+                "transformation_id": transformation_id,
+                "workspace_id": workspace_id,
+                "user_id": user_id,
+                **data
+            },
+            "target": "user",
+            "target_id": user_id
+        }
+        
+        # Send HTTP request to WebSocket broadcast endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"http://localhost:8000/api/ws/broadcast",
+                json=notification_data,
+                timeout=5.0
+            )
+            
+            if response.status_code == 200:
+                print(f"WebSocket notification sent: {message_type} for transformation {transformation_id}")
+            else:
+                print(f"Failed to send WebSocket notification: {response.status_code}")
+    
+    except Exception as e:
+        # Don't fail the transformation if WebSocket notification fails
+        print(f"Error sending WebSocket notification: {e}")
+
+
 # Create async database session for tasks
 async_engine = create_async_engine(
-    settings.get_database_url(),
+    settings.get_database_url(async_driver=True),
     echo=settings.DEBUG
 )
 
@@ -234,6 +277,15 @@ async def _process_transformation_async(
                 meta={"progress": 10, "status": "Loading transformation..."}
             )
             
+            # Send WebSocket notification: transformation started
+            await send_websocket_notification(
+                workspace_id=str(workspace_id),
+                user_id=str(user_id),
+                transformation_id=str(transformation_id),
+                message_type="transformation_started",
+                data={"progress": 10, "status": "Loading transformation..."}
+            )
+            
             # Get transformation record
             await workspace_service.set_workspace_context(db, workspace_id)
             
@@ -277,6 +329,15 @@ async def _process_transformation_async(
                 meta={"progress": 60, "status": "Calling AI provider..."}
             )
             
+            # Send WebSocket notification: AI processing
+            await send_websocket_notification(
+                workspace_id=str(workspace_id),
+                user_id=str(user_id),
+                transformation_id=str(transformation_id),
+                message_type="transformation_progress",
+                data={"progress": 60, "status": "Calling AI provider..."}
+            )
+            
             # Call AI API
             ai_result = await call_ai_provider(prompt)
             
@@ -302,6 +363,21 @@ async def _process_transformation_async(
                 meta={"progress": 100, "status": "Transformation completed successfully!"}
             )
             
+            # Send WebSocket notification: transformation completed
+            await send_websocket_notification(
+                workspace_id=str(workspace_id),
+                user_id=str(user_id),
+                transformation_id=str(transformation_id),
+                message_type="transformation_completed",
+                data={
+                    "progress": 100,
+                    "status": "Transformation completed successfully!",
+                    "result_preview": ai_result["content"][:200] + "..." if len(ai_result["content"]) > 200 else ai_result["content"],
+                    "provider": ai_result["provider"],
+                    "tokens_used": ai_result.get("tokens_used")
+                }
+            )
+            
             return {
                 "transformation_id": str(transformation_id),
                 "status": "completed",
@@ -324,8 +400,17 @@ async def _process_transformation_async(
                 meta={"progress": 0, "status": f"Transformation failed: {str(e)}"}
             )
             
+            # Send WebSocket failure notification
+            await send_websocket_notification(
+                workspace_id=str(workspace_id),
+                user_id=str(user_id),
+                transformation_id=str(transformation_id),
+                message_type="transformation_failed",
+                data={"error_message": str(e)}
+            )
+            
             # Re-raise for Celery retry mechanism
-            raise self.retry(exc=e, countdown=60, max_retries=3)
+            raise task_instance.retry(exc=e, countdown=60, max_retries=3)
         
         finally:
             await workspace_service.clear_workspace_context(db)
