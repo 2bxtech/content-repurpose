@@ -56,7 +56,7 @@ class Settings(BaseSettings):
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
     
     # AI Provider Configuration (Flexible multi-provider support)
-    AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local)$")
+    AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local|mock)$")
     
     # AI API Keys (configure based on chosen provider)
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
