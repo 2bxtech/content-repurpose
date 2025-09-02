@@ -7,8 +7,6 @@ from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, and_
-import anthropic
-import openai
 import asyncio
 import httpx
 
@@ -18,6 +16,7 @@ from app.models.transformations import TransformationType, TransformationStatus
 from app.db.models.transformation import Transformation as TransformationDB
 from app.db.models.document import Document as DocumentDB
 from app.services.workspace_service import workspace_service
+from app.services.ai_providers import get_ai_provider_manager, AIProviderError
 
 
 async def send_websocket_notification(
@@ -136,87 +135,38 @@ def get_transformation_prompt(
 
 async def call_ai_provider(prompt: str, ai_provider: str = None) -> Dict[str, Any]:
     """
-    Call the configured AI provider with fallback support
+    Call the configured AI provider using the new provider manager
     """
-    provider = ai_provider or settings.AI_PROVIDER
+    manager = get_ai_provider_manager()
     
     try:
-        if provider == "anthropic":
-            return await call_claude_api(prompt)
-        elif provider == "openai":
-            return await call_openai_api(prompt)
-        else:
-            raise ValueError(f"Unsupported AI provider: {provider}")
-    
-    except Exception as e:
-        # Try fallback provider if primary fails
-        if provider == "anthropic" and settings.OPENAI_API_KEY:
-            return await call_openai_api(prompt)
-        elif provider == "openai" and settings.CLAUDE_API_KEY:
-            return await call_claude_api(prompt)
-        else:
-            raise e
-
-
-async def call_claude_api(prompt: str) -> Dict[str, Any]:
-    """Call Anthropic Claude API"""
-    if not settings.CLAUDE_API_KEY:
-        raise ValueError("Claude API key not configured")
-    
-    client = anthropic.Anthropic(api_key=settings.CLAUDE_API_KEY)
-    
-    try:
-        message = client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=settings.AI_MAX_TOKENS,
-            temperature=settings.AI_TEMPERATURE,
-            system="You are an expert content repurposing assistant. Your task is to transform the provided content into the requested format while maintaining the key information and adapting the style appropriately.",
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        return {
-            "content": message.content[0].text,
-            "provider": "claude",
-            "model": "claude-3-sonnet-20240229",
-            "tokens_used": message.usage.input_tokens + message.usage.output_tokens if hasattr(message, 'usage') else None
-        }
-    
-    except Exception as e:
-        raise Exception(f"Claude API error: {str(e)}")
-
-
-async def call_openai_api(prompt: str) -> Dict[str, Any]:
-    """Call OpenAI GPT API"""
-    if not settings.OPENAI_API_KEY:
-        raise ValueError("OpenAI API key not configured")
-    
-    client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-    
-    try:
-        response = await client.chat.completions.create(
-            model=settings.DEFAULT_AI_MODEL,
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are an expert content repurposing assistant. Your task is to transform the provided content into the requested format while maintaining the key information and adapting the style appropriately."
-                },
-                {"role": "user", "content": prompt}
-            ],
+        response = await manager.generate_text(
+            prompt=prompt,
+            preferred_provider=ai_provider,
             max_tokens=settings.AI_MAX_TOKENS,
             temperature=settings.AI_TEMPERATURE
         )
         
+        # Convert to the expected format for backward compatibility
         return {
-            "content": response.choices[0].message.content,
-            "provider": "openai",
-            "model": settings.DEFAULT_AI_MODEL,
-            "tokens_used": response.usage.total_tokens if response.usage else None
+            "content": response.content,
+            "provider": response.provider,
+            "model": response.model,
+            "tokens_used": response.usage_metrics.total_tokens
         }
     
-    except Exception as e:
-        raise Exception(f"OpenAI API error: {str(e)}")
+    except AIProviderError as e:
+        raise Exception(f"AI Provider error: {str(e)}")
+
+
+async def call_claude_api(prompt: str) -> Dict[str, Any]:
+    """Call Anthropic Claude API using the provider manager"""
+    return await call_ai_provider(prompt, "anthropic")
+
+
+async def call_openai_api(prompt: str) -> Dict[str, Any]:
+    """Call OpenAI GPT API using the provider manager"""
+    return await call_ai_provider(prompt, "openai")
 
 
 @celery_app.task(bind=True, name="app.tasks.transformation_tasks.process_transformation")

@@ -55,7 +55,7 @@ class Settings(BaseSettings):
             return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
     
-    # AI Provider Configuration (Flexible multi-provider support)
+    # AI Provider Configuration (Enhanced multi-provider support with failover)
     AI_PROVIDER: str = Field(default="openai", pattern="^(openai|anthropic|azure|local|mock)$")
     
     # AI API Keys (configure based on chosen provider)
@@ -68,6 +68,22 @@ class Settings(BaseSettings):
     DEFAULT_AI_MODEL: str = Field(default="gpt-4o-mini", description="Default AI model to use")
     AI_MAX_TOKENS: int = Field(default=4000, description="Maximum tokens per AI request")
     AI_TEMPERATURE: float = Field(default=0.7, ge=0.0, le=2.0, description="AI response creativity")
+    
+    # Enhanced AI Provider Management
+    AI_PROVIDER_SELECTION_STRATEGY: str = Field(default="primary_failover", description="Provider selection strategy")
+    AI_ENABLE_FAILOVER: bool = Field(default=True, description="Enable automatic provider failover")
+    AI_COST_TRACKING: bool = Field(default=True, description="Enable cost tracking and limits")
+    AI_RATE_LIMITING: bool = Field(default=True, description="Enable per-provider rate limiting")
+    
+    # AI Cost Management
+    AI_MAX_COST_PER_HOUR: float = Field(default=10.0, description="Maximum cost per hour across all providers")
+    AI_MAX_REQUESTS_PER_MINUTE: int = Field(default=60, description="Maximum requests per minute per provider")
+    AI_BUDGET_ALERT_THRESHOLD: float = Field(default=0.8, description="Alert when budget reaches this percentage")
+    
+    # AI Performance Monitoring
+    AI_RESPONSE_TIME_THRESHOLD_MS: int = Field(default=30000, description="Response time threshold for provider health")
+    AI_ERROR_RATE_THRESHOLD: float = Field(default=0.1, description="Error rate threshold for provider health")
+    AI_PERFORMANCE_WINDOW_MINUTES: int = Field(default=60, description="Performance monitoring window")
     
     # Database settings
     DATABASE_HOST: str = Field(default="localhost")
