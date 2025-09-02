@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, documents, transformations, health, workspaces, websockets
+from app.api.routes import auth, documents, transformations, health, workspaces, websockets, ai_providers
 from app.core.config import settings
 from app.services.redis_service import redis_service
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -81,6 +81,7 @@ app.include_router(workspaces.router, prefix="/api", tags=["workspaces"])
 app.include_router(documents.router, prefix="/api", tags=["documents"])
 app.include_router(transformations.router, prefix="/api", tags=["transformations"])
 app.include_router(websockets.router, prefix="/api", tags=["websockets"])
+app.include_router(ai_providers.router, prefix="/api/ai", tags=["ai-providers"])
 
 @app.get("/", tags=["health"])
 async def root():

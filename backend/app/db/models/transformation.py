@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, Enum as SQLEnum, Index
+from sqlalchemy import Column, String, Text, Integer, Float, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from app.core.models import BaseModel, WorkspaceMixin
@@ -37,11 +37,15 @@ class Transformation(BaseModel, WorkspaceMixin):
     error_message = Column(Text)
     task_id = Column(String(255))  # Celery task ID for tracking
     
-    # AI processing metadata
+    # AI processing metadata (Enhanced for Phase 7)
     ai_provider = Column(String(50))
     ai_model = Column(String(100))  # AI model used
     tokens_used = Column(Integer)
+    input_tokens = Column(Integer)  # Input tokens used
+    output_tokens = Column(Integer)  # Output tokens generated
     processing_time_seconds = Column(Integer)
+    ai_cost = Column(Float)  # Cost in USD for this transformation
+    ai_response_metadata = Column(JSONB, default={})  # Store provider-specific metadata
     
     # Relationships
     workspace = relationship("Workspace", back_populates="transformations")
