@@ -4,17 +4,20 @@ from datetime import datetime
 from enum import Enum
 import uuid
 
+
 class WorkspacePlan(str, Enum):
     FREE = "free"
     STARTER = "starter"
     PRO = "pro"
     ENTERPRISE = "enterprise"
 
+
 class WorkspaceRole(str, Enum):
     OWNER = "owner"
     ADMIN = "admin"
     MEMBER = "member"
     VIEWER = "viewer"
+
 
 class WorkspaceSettings(BaseModel):
     max_users: int = 10
@@ -23,23 +26,29 @@ class WorkspaceSettings(BaseModel):
     ai_requests_per_month: int = 1000
     features_enabled: List[str] = ["basic_transformations"]
 
+
 class WorkspaceBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
 
+
 class WorkspaceCreate(WorkspaceBase):
     slug: str = Field(..., min_length=1, max_length=100)
     plan: WorkspacePlan = WorkspacePlan.FREE
-    
-    @validator('slug')
+
+    @validator("slug")
     def validate_slug(cls, v):
         # Ensure slug is URL-safe
         import re
-        if not re.match(r'^[a-z0-9-]+$', v):
-            raise ValueError('Slug must contain only lowercase letters, numbers, and hyphens')
-        if v.startswith('-') or v.endswith('-'):
-            raise ValueError('Slug cannot start or end with a hyphen')
+
+        if not re.match(r"^[a-z0-9-]+$", v):
+            raise ValueError(
+                "Slug must contain only lowercase letters, numbers, and hyphens"
+            )
+        if v.startswith("-") or v.endswith("-"):
+            raise ValueError("Slug cannot start or end with a hyphen")
         return v
+
 
 class WorkspaceUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
@@ -47,6 +56,7 @@ class WorkspaceUpdate(BaseModel):
     plan: Optional[WorkspacePlan] = None
     settings: Optional[WorkspaceSettings] = None
     is_active: Optional[bool] = None
+
 
 class Workspace(WorkspaceBase):
     id: uuid.UUID
@@ -56,21 +66,23 @@ class Workspace(WorkspaceBase):
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
-    
+
     # User's role in this workspace
     user_role: Optional[WorkspaceRole] = None
-    
+
     # Statistics
     user_count: Optional[int] = None
     document_count: Optional[int] = None
     storage_used_mb: Optional[float] = None
-    
+
     class Config:
         from_attributes = True
+
 
 class WorkspaceList(BaseModel):
     workspaces: List[Workspace]
     count: int
+
 
 class WorkspaceMember(BaseModel):
     id: uuid.UUID
@@ -81,14 +93,17 @@ class WorkspaceMember(BaseModel):
     created_at: datetime
     last_login: Optional[datetime] = None
 
+
 class WorkspaceMemberList(BaseModel):
     members: List[WorkspaceMember]
     count: int
 
+
 class WorkspaceInvite(BaseModel):
-    email: str = Field(..., pattern=r'^[^@]+@[^@]+\.[^@]+$')
+    email: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$")
     role: WorkspaceRole = WorkspaceRole.MEMBER
     message: Optional[str] = None
+
 
 class WorkspaceInviteResponse(BaseModel):
     id: uuid.UUID
@@ -101,8 +116,10 @@ class WorkspaceInviteResponse(BaseModel):
     expires_at: datetime
     created_at: datetime
 
+
 class WorkspaceSwitch(BaseModel):
     workspace_id: uuid.UUID
+
 
 class WorkspaceUsage(BaseModel):
     workspace_id: uuid.UUID
@@ -112,10 +129,11 @@ class WorkspaceUsage(BaseModel):
         "users": 0,
         "documents": 0,
         "storage_mb": 0,
-        "ai_requests_this_month": 0
+        "ai_requests_this_month": 0,
     }
     limits: Dict[str, Any] = {}
     usage_percentage: Dict[str, float] = {}
+
 
 class WorkspaceStats(BaseModel):
     workspace_id: uuid.UUID
@@ -124,7 +142,4 @@ class WorkspaceStats(BaseModel):
     active_users: int
     storage_used_mb: float
     ai_requests_this_month: int
-    created_this_week: Dict[str, int] = {
-        "documents": 0,
-        "transformations": 0
-    }
+    created_this_week: Dict[str, int] = {"documents": 0, "transformations": 0}

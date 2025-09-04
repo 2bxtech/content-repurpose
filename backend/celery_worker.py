@@ -2,6 +2,7 @@
 """
 Celery worker startup script for the content repurposing tool.
 """
+
 import os
 import sys
 

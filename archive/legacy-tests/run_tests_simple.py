@@ -3,14 +3,12 @@
 Simplified test runner that focuses on running tests against already-running containers.
 No complex Docker client dependencies.
 """
-import os
 import sys
 import time
 import subprocess
 import argparse
 from pathlib import Path
 import requests
-from typing import Optional
 
 # Configuration
 TEST_API_URL = "http://localhost:8002"
@@ -65,7 +63,7 @@ def setup_test_environment() -> bool:
     ], capture_output=True, text=True)
     
     if result.returncode != 0:
-        print(f"❌ Failed to start test services:")
+        print("❌ Failed to start test services:")
         print(result.stderr)
         return False
     
@@ -88,7 +86,7 @@ def run_pytest(args: list) -> int:
         "-v"
     ] + args
     
-    print(f"\n🧪 RUNNING TESTS")
+    print("\n🧪 RUNNING TESTS")
     print("-" * 50)
     print(f"Command: {' '.join(pytest_cmd)}")
     print()
