@@ -28,7 +28,7 @@ from .diagnostics import DiagnosticToolkit
 
 __all__ = [
     "EnvironmentManager",
-    "DockerTestManager", 
+    "DockerTestManager",
     "PhaseTestRunner",
-    "DiagnosticToolkit"
+    "DiagnosticToolkit",
 ]

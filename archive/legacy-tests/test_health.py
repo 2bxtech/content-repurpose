@@ -2,16 +2,17 @@
 """
 Quick health check for the running server - Windows bash compatible
 """
+
 import requests
-import json
 import sys
+
 
 def test_server():
     """Test the server health endpoint"""
     try:
         print("🔍 Testing server health...")
         response = requests.get("http://127.0.0.1:8000/api/health", timeout=5)
-        
+
         if response.status_code == 200:
             data = response.json()
             print("✅ Server is healthy!")
@@ -24,13 +25,14 @@ def test_server():
             print(f"❌ Server returned status {response.status_code}")
             print(f"   Response: {response.text}")
             return False
-            
+
     except requests.exceptions.ConnectionError:
         print("❌ Cannot connect to server. Is it running on http://127.0.0.1:8000?")
         return False
     except Exception as e:
         print(f"❌ Error testing server: {e}")
         return False
+
 
 if __name__ == "__main__":
     success = test_server()

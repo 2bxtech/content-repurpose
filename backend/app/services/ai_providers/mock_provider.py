@@ -3,82 +3,84 @@ Mock AI Provider Implementation
 
 Mock provider for testing and development purposes.
 """
+
 import time
 import random
-from typing import Dict, Any, Optional, List
+from typing import Optional, List
 from .base import (
-    BaseAIProvider, AIProviderType, AIResponse, AIModelInfo, 
-    ModelCapability, AIProviderError
+    BaseAIProvider,
+    AIProviderType,
+    AIResponse,
+    AIModelInfo,
+    ModelCapability,
 )
 
 
 class MockProvider(BaseAIProvider):
     """Mock AI provider for testing"""
-    
+
     def get_provider_type(self) -> AIProviderType:
         return AIProviderType.MOCK
-    
+
     def _initialize_client(self):
         """Initialize mock client (no-op)"""
         self.client = None
-    
+
     async def generate_text(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ) -> AIResponse:
         """Generate mock text response"""
         start_time = time.time()
-        
+
         # Simulate processing time
         await self._simulate_processing_time()
-        
+
         # Use default model if not specified
         if not model:
             model = self.get_default_model()
-        
+
         # Generate mock content based on prompt length and type
         content = self._generate_mock_content(prompt, max_tokens or 4000)
-        
+
         processing_time_ms = int((time.time() - start_time) * 1000)
-        
+
         # Calculate mock usage metrics
         input_tokens = len(prompt.split()) * 1.3  # Approximate tokenization
         output_tokens = len(content.split()) * 1.3
-        
+
         usage_metrics = self._calculate_usage_metrics(
             model=model,
             input_tokens=int(input_tokens),
             output_tokens=int(output_tokens),
-            processing_time_ms=processing_time_ms
+            processing_time_ms=processing_time_ms,
         )
-        
+
         return AIResponse(
             content=content,
             provider=self.provider_type.value,
             model=model,
             usage_metrics=usage_metrics,
-            metadata={
-                "mock_provider": True,
-                "simulation_delay_ms": processing_time_ms
-            },
-            finish_reason="stop"
+            metadata={"mock_provider": True, "simulation_delay_ms": processing_time_ms},
+            finish_reason="stop",
         )
-    
+
     async def _simulate_processing_time(self):
         """Simulate realistic API response time"""
         import asyncio
+
         # Simulate 0.5-2 seconds processing time
         delay = random.uniform(0.5, 2.0)
         await asyncio.sleep(delay)
-    
+
     def _generate_mock_content(self, prompt: str, max_tokens: int) -> str:
         """Generate mock content based on prompt"""
         prompt_lower = prompt.lower()
-        
+
         # Detect transformation type from prompt
         if "blog post" in prompt_lower:
             return self._generate_blog_post_mock()
@@ -92,7 +94,7 @@ class MockProvider(BaseAIProvider):
             return self._generate_summary_mock()
         else:
             return self._generate_generic_mock()
-    
+
     def _generate_blog_post_mock(self) -> str:
         """Generate mock blog post"""
         return """# The Power of AI-Driven Content Transformation
@@ -133,7 +135,7 @@ To successfully implement AI-driven content transformation:
 AI-powered content transformation represents the future of digital marketing. By embracing these technologies, businesses can achieve unprecedented efficiency and reach in their content strategies.
 
 *Ready to transform your content strategy? Start your AI journey today.*"""
-    
+
     def _generate_social_media_mock(self) -> str:
         """Generate mock social media posts"""
         return """🚀 Transform your content strategy with AI! 
@@ -169,7 +171,7 @@ AI-powered transformation ensures:
 Game-changer for modern marketers! 🔥
 
 #AI #ContentStrategy #Marketing"""
-    
+
     def _generate_email_mock(self) -> str:
         """Generate mock email sequence"""
         return """Subject: Welcome to the AI Content Revolution! 🚀
@@ -219,7 +221,7 @@ Ready to implement these strategies? Reply and let me know your biggest content 
 
 Best regards,
 The AI Content Team"""
-    
+
     def _generate_newsletter_mock(self) -> str:
         """Generate mock newsletter"""
         return """# The AI Content Weekly 📰
@@ -270,7 +272,7 @@ The content marketing landscape is evolving rapidly. According to recent studies
 The AI Content Team
 
 P.S. Don't forget to connect with us on social media for daily tips and insights!"""
-    
+
     def _generate_summary_mock(self) -> str:
         """Generate mock summary"""
         return """**Executive Summary: AI Content Transformation**
@@ -299,7 +301,7 @@ Organizations implementing AI content transformation typically see 250-400% impr
 
 **Next Steps:**
 Begin with a pilot program focusing on blog-to-social-media transformations before expanding to additional content types and platforms."""
-    
+
     def _generate_generic_mock(self) -> str:
         """Generate generic mock content"""
         return """**AI-Generated Content Transformation**
@@ -326,7 +328,7 @@ The actual implementation would analyze your original content and transform it a
 - Consistent behavior for automated testing
 
 This mock response helps developers and testers validate the system's functionality before integrating with live AI providers."""
-    
+
     def get_available_models(self) -> List[AIModelInfo]:
         """Get mock models"""
         return [
@@ -340,11 +342,11 @@ This mock response helps developers and testers validate the system's functional
                     ModelCapability.TEXT_GENERATION,
                     ModelCapability.CONVERSATION,
                     ModelCapability.CONTENT_CREATION,
-                    ModelCapability.SUMMARIZATION
+                    ModelCapability.SUMMARIZATION,
                 ],
                 context_window=8192,
                 supports_streaming=False,
-                supports_function_calling=False
+                supports_function_calling=False,
             ),
             AIModelInfo(
                 name="mock-claude",
@@ -356,22 +358,22 @@ This mock response helps developers and testers validate the system's functional
                     ModelCapability.TEXT_GENERATION,
                     ModelCapability.CONVERSATION,
                     ModelCapability.CONTENT_CREATION,
-                    ModelCapability.SUMMARIZATION
+                    ModelCapability.SUMMARIZATION,
                 ],
                 context_window=100000,
                 supports_streaming=False,
-                supports_function_calling=False
-            )
+                supports_function_calling=False,
+            ),
         ]
-    
+
     def get_default_model(self) -> str:
         """Get default mock model"""
         return "mock-gpt-4"
-    
+
     def estimate_cost(self, input_tokens: int, output_tokens: int, model: str) -> float:
         """Mock provider has no cost"""
         return 0.0
-    
+
     async def validate_api_key(self) -> bool:
         """Mock provider always validates successfully"""
         return True

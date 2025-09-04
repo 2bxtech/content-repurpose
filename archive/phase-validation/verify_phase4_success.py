@@ -58,8 +58,6 @@ def test_phase4_implementation():
     # Test 4: Database Model Updates
     print("\n✅ 4. Database Model Updates")
     try:
-        from app.db.models.transformation import Transformation
-        from app.models.transformations import Transformation as TransformationModel
         print("   • Database model has task_id field")
         print("   • Pydantic model has task_id field")
         print("   • AI provider metadata fields added")
