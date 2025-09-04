@@ -5,4 +5,4 @@ from .document import Document
 from .transformation import Transformation
 
 # Export all models for easy importing
-__all__ = ['Workspace', 'User', 'Document', 'Transformation']
+__all__ = ["Workspace", "User", "Document", "Transformation"]

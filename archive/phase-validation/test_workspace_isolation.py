@@ -5,8 +5,6 @@ Test script to verify workspace isolation and multi-tenancy functionality.
 
 import asyncio
 import aiohttp
-import json
-from typing import Dict, Any
 
 # Base URL for our API
 BASE_URL = "http://127.0.0.1:8000"

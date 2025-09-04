@@ -8,6 +8,7 @@ from alembic import context
 
 # Add the app directory to the path
 import sys
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import the configuration and models
@@ -18,10 +19,6 @@ from app.core.models import Base
 settings = Settings()
 
 # Import all models to ensure they're registered with SQLAlchemy
-from app.db.models.workspace import Workspace
-from app.db.models.user import User
-from app.db.models.document import Document
-from app.db.models.transformation import Transformation
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -32,7 +29,9 @@ if settings.DATABASE_URL_SYNC:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL_SYNC)
 elif settings.DATABASE_URL:
     # Convert async URL to sync URL for Alembic
-    sync_url = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+    sync_url = settings.DATABASE_URL.replace(
+        "postgresql+asyncpg://", "postgresql+psycopg2://"
+    )
     config.set_main_option("sqlalchemy.url", sync_url)
 else:
     # Use the constructed sync URL directly
@@ -92,9 +91,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

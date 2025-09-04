@@ -30,7 +30,10 @@ def run_command(cmd: list, description: str) -> bool:
             return True
         else:
             # Check if it's just a coverage warning (common and acceptable)
-            if "CoverageWarning" in result.stderr and "No data was collected" in result.stderr:
+            if (
+                "CoverageWarning" in result.stderr
+                and "No data was collected" in result.stderr
+            ):
                 print(f"✅ {description} - Success (coverage warning ignored)")
                 return True
             else:
@@ -46,7 +49,7 @@ def check_api_health(url: str) -> bool:
     try:
         response = requests.get(f"{url}/api/health", timeout=5)
         if response.status_code == 200:
-            print(f"✅ API Health Check - Success")
+            print("✅ API Health Check - Success")
             return True
         else:
             print(f"❌ API Health Check - Status {response.status_code}")
@@ -60,44 +63,48 @@ def main():
     """Main validation function"""
     print("🚀 TESTING FRAMEWORK VALIDATION")
     print("=" * 60)
-    
+
     project_root = Path(__file__).parent
     all_passed = True
-    
+
     # Step 1: Check prerequisites
     print_step("1️⃣", "CHECKING PREREQUISITES")
-    
+
     checks = [
         (["python", "--version"], "Python availability"),
         (["docker", "--version"], "Docker availability"),
         (["docker-compose", "--version"], "Docker Compose availability"),
     ]
-    
+
     for cmd, desc in checks:
         if not run_command(cmd, desc):
             all_passed = False
-    
+
     # Step 2: Check Python dependencies
     print_step("2️⃣", "CHECKING PYTHON DEPENDENCIES")
-    
+
     try:
-        import pytest, httpx, requests, asyncio
+        import pytest
+        import httpx
+        import requests
+        import asyncio
+
         print("✅ Python test dependencies - Available")
     except ImportError as e:
         print(f"❌ Python test dependencies - Missing: {e}")
         print("💡 Run: pip install -r tests/requirements-test.txt")
         all_passed = False
-    
+
     # Step 3: Validate test structure
     print_step("3️⃣", "VALIDATING TEST STRUCTURE")
-    
+
     required_files = [
         "tests/conftest.py",
         "tests/test_basic.py",
         "docker-compose.test.yml",
-        "run_tests.py"
+        "run_tests.py",
     ]
-    
+
     for file_path in required_files:
         full_path = project_root / file_path
         if full_path.exists():
@@ -105,61 +112,76 @@ def main():
         else:
             print(f"❌ {file_path} - Missing")
             all_passed = False
-    
+
     # Step 4: Test unit tests (no Docker needed)
     print_step("4️⃣", "RUNNING UNIT TESTS")
-    
+
     unit_cmd = [
-        sys.executable, "-m", "pytest",
+        sys.executable,
+        "-m",
+        "pytest",
         "tests/test_basic.py::TestUtilities",
-        "-v", "--tb=short"
+        "-v",
+        "--tb=short",
     ]
-    
+
     if not run_command(unit_cmd, "Unit tests execution"):
         all_passed = False
-    
+
     # Step 5: Quick Docker environment test
     print_step("5️⃣", "TESTING DOCKER ENVIRONMENT")
-    
+
     # Start test environment
     print("🚀 Starting test environment...")
     start_cmd = [
-        "docker-compose", "-f", "docker-compose.test.yml",
-        "-p", "content-repurpose-test",
-        "up", "-d", "--build"
+        "docker-compose",
+        "-f",
+        "docker-compose.test.yml",
+        "-p",
+        "content-repurpose-test",
+        "up",
+        "-d",
+        "--build",
     ]
-    
+
     if run_command(start_cmd, "Test environment startup"):
         # Wait a moment for services to start
         print("⏳ Waiting for services to start...")
         time.sleep(10)
-        
+
         # Check API health
         if check_api_health("http://localhost:8002"):
             # Run integration test
             integration_cmd = [
-                sys.executable, "-m", "pytest",
+                sys.executable,
+                "-m",
+                "pytest",
                 "tests/test_basic.py::TestAPIHealth::test_api_health",
-                "-v", "--tb=short"
+                "-v",
+                "--tb=short",
             ]
             if not run_command(integration_cmd, "Integration test execution"):
                 all_passed = False
         else:
             all_passed = False
-        
+
         # Cleanup
         cleanup_cmd = [
-            "docker-compose", "-f", "docker-compose.test.yml",
-            "-p", "content-repurpose-test",
-            "down", "-v"
+            "docker-compose",
+            "-f",
+            "docker-compose.test.yml",
+            "-p",
+            "content-repurpose-test",
+            "down",
+            "-v",
         ]
         run_command(cleanup_cmd, "Test environment cleanup")
     else:
         all_passed = False
-    
+
     # Final results
     print_step("🎯", "VALIDATION RESULTS")
-    
+
     if all_passed:
         print("✅ ALL VALIDATIONS PASSED!")
         print("\n🎉 Testing framework is ready for use!")
@@ -172,7 +194,9 @@ def main():
         print("❌ SOME VALIDATIONS FAILED!")
         print("\n🔧 Please fix the issues above before proceeding.")
         print("\n💡 Common solutions:")
-        print("   • Install missing dependencies: pip install -r tests/requirements-test.txt")
+        print(
+            "   • Install missing dependencies: pip install -r tests/requirements-test.txt"
+        )
         print("   • Check Docker is running: docker ps")
         print("   • Review error messages above")
         return 1

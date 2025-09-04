@@ -2,6 +2,7 @@
 """
 Celery beat scheduler startup script for periodic tasks.
 """
+
 import os
 import sys
 
