@@ -1,0 +1,65 @@
+# Development Dockerfile with hot reload and debugging capabilities
+FROM python:3.12-slim as development
+
+# Set development labels
+LABEL environment="development"
+LABEL app="content-repurpose-api-dev"
+
+# Set development environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ENVIRONMENT=development \
+    DEBUG=true \
+    PORT=8000
+
+# Install development dependencies including debugging tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    vim \
+    htop \
+    postgresql-client \
+    redis-tools \
+    net-tools \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create application directory
+WORKDIR /app
+
+# Install Python dependencies with development tools
+COPY backend/requirements.txt .
+COPY deployments/requirements-development.txt .
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-development.txt && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Create non-root user for development
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Create development directories
+RUN mkdir -p /app/logs /app/uploads /app/tmp && \
+    chown -R appuser:appuser /app
+
+# Copy application code
+COPY backend/ .
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Development health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Development command with hot reload
+CMD ["uvicorn", "main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--reload", \
+     "--reload-dir", "/app", \
+     "--log-level", "debug"]
