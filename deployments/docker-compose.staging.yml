@@ -1,0 +1,269 @@
+# Staging Docker Compose Configuration
+# Balances production-like behavior with development accessibility
+version: '3.8'
+
+services:
+  # Staging PostgreSQL with production settings but development access
+  postgres:
+    image: postgres:16-alpine
+    container_name: content-repurpose-postgres-staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-content_repurpose_staging}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-staging_password_change_me}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+      # Staging performance settings (reduced from production)
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-32MB}
+    ports:
+      - "${DATABASE_PORT:-5434}:5432"
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./deployments/postgres/postgresql-staging.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-content_repurpose_staging}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Staging Redis with basic persistence
+  redis:
+    image: redis:7-alpine
+    container_name: content-repurpose-redis-staging
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-staging_redis_password}
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_staging_data:/data
+      - ./deployments/redis/redis-staging.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-staging_redis_password}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-staging_redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Staging API with production build but development monitoring
+  api:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: staging
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:staging
+    container_name: content-repurpose-api-staging
+    restart: unless-stopped
+    environment:
+      # Database configuration
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-staging_password_change_me}@postgres:5432/${DATABASE_NAME:-content_repurpose_staging}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-staging_password_change_me}@postgres:5432/${DATABASE_NAME:-content_repurpose_staging}
+      
+      # Redis configuration
+      REDIS_URL: redis://:${REDIS_PASSWORD:-staging_redis_password}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-staging_redis_password}
+      
+      # Application configuration
+      ENVIRONMENT: staging
+      DEBUG: "true"  # Enable debug for easier troubleshooting in staging
+      SECRET_KEY: ${SECRET_KEY:-staging_secret_key_change_in_production_32_chars_minimum}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:-staging_refresh_secret_key_change_in_production_32_chars}
+      
+      # AI Provider configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      
+      # Security configuration (relaxed for staging)
+      SECURITY_AUDIT_RETENTION_DAYS: ${SECURITY_AUDIT_RETENTION_DAYS:-30}
+      SECURITY_ENABLE_CSP: ${SECURITY_ENABLE_CSP:-true}
+      SECURITY_HSTS_MAX_AGE: ${SECURITY_HSTS_MAX_AGE:-3600}
+      
+      # Monitoring configuration
+      MONITORING_METRICS_RETENTION_HOURS: ${MONITORING_METRICS_RETENTION_HOURS:-12}
+      MONITORING_ALERT_THRESHOLD_CPU: ${MONITORING_ALERT_THRESHOLD_CPU:-85}
+      MONITORING_ALERT_THRESHOLD_MEMORY: ${MONITORING_ALERT_THRESHOLD_MEMORY:-90}
+      
+      # Performance configuration (reduced for staging)
+      WORKERS: ${API_WORKERS:-2}
+      MAX_CONNECTIONS: ${API_MAX_CONNECTIONS:-50}
+      
+      # Logging configuration
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      SENTRY_DSN: ${SENTRY_DSN}
+    ports:
+      - "${API_PORT:-8001}:8000"
+    volumes:
+      - api_staging_uploads:/app/uploads
+      - api_staging_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/comprehensive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Staging Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: staging
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:staging
+    container_name: content-repurpose-celery-worker-staging
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-staging_password_change_me}@postgres:5432/${DATABASE_NAME:-content_repurpose_staging}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-staging_redis_password}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-staging_redis_password}
+      ENVIRONMENT: staging
+      DEBUG: "true"
+      SECRET_KEY: ${SECRET_KEY:-staging_secret_key_change_in_production_32_chars_minimum}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:-staging_refresh_secret_key_change_in_production_32_chars}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      
+      # Celery configuration (reduced for staging)
+      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-2}
+      CELERY_WORKER_MAX_TASKS_PER_CHILD: ${CELERY_WORKER_MAX_TASKS_PER_CHILD:-500}
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-2}
+    volumes:
+      - api_staging_uploads:/app/uploads:ro
+      - celery_staging_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Staging Celery Beat
+  celery-beat:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: staging
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:staging
+    container_name: content-repurpose-celery-beat-staging
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD:-staging_password_change_me}@postgres:5432/${DATABASE_NAME:-content_repurpose_staging}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-staging_redis_password}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-staging_redis_password}
+      ENVIRONMENT: staging
+      DEBUG: "true"
+      SECRET_KEY: ${SECRET_KEY:-staging_secret_key_change_in_production_32_chars_minimum}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY:-staging_refresh_secret_key_change_in_production_32_chars}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    command: celery -A app.core.celery_app beat --loglevel=info
+    volumes:
+      - celery_beat_staging_data:/tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Staging Flower for task monitoring
+  flower:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: staging
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:staging
+    container_name: content-repurpose-flower-staging
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD:-staging_redis_password}@redis:6379/0
+      FLOWER_BASIC_AUTH: ${FLOWER_USERNAME:-admin}:${FLOWER_PASSWORD:-staging_flower_password}
+    command: celery -A app.core.celery_app flower --basic-auth=${FLOWER_USERNAME:-admin}:${FLOWER_PASSWORD:-staging_flower_password}
+    ports:
+      - "${FLOWER_PORT:-5556}:5555"
+    depends_on:
+      - redis
+    networks:
+      - content-repurpose-staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_staging_data:
+    driver: local
+  redis_staging_data:
+    driver: local
+  api_staging_uploads:
+    driver: local
+  api_staging_logs:
+    driver: local
+  celery_staging_logs:
+    driver: local
+  celery_beat_staging_data:
+    driver: local
+
+networks:
+  content-repurpose-staging-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

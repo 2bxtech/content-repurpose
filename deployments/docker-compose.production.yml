@@ -1,0 +1,305 @@
+# Production Docker Compose Configuration
+# Optimized for production deployment with security and performance
+version: '3.8'
+
+services:
+  # Production PostgreSQL with replication-ready configuration
+  postgres:
+    image: postgres:16-alpine
+    container_name: content-repurpose-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-content_repurpose}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      # Production performance settings
+      POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-256MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: ${POSTGRES_CHECKPOINT_COMPLETION_TARGET:-0.9}
+      POSTGRES_WAL_BUFFERS: ${POSTGRES_WAL_BUFFERS:-16MB}
+      POSTGRES_DEFAULT_STATISTICS_TARGET: ${POSTGRES_DEFAULT_STATISTICS_TARGET:-100}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+      - ./deployments/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-content_repurpose}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+
+  # Production Redis with persistence and optimization
+  redis:
+    image: redis:7-alpine
+    container_name: content-repurpose-redis-prod
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_prod_data:/data
+      - ./deployments/redis/redis-production.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  # Production API with optimized configuration
+  api:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: production
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:production
+    container_name: content-repurpose-api-prod
+    restart: always
+    environment:
+      # Database configuration
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME:-content_repurpose}
+      DATABASE_URL_SYNC: postgresql+psycopg2://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME:-content_repurpose}
+      
+      # Redis configuration
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      
+      # Application configuration
+      ENVIRONMENT: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY}
+      
+      # AI Provider configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      
+      # Security configuration
+      SECURITY_AUDIT_RETENTION_DAYS: ${SECURITY_AUDIT_RETENTION_DAYS:-90}
+      SECURITY_ENABLE_CSP: ${SECURITY_ENABLE_CSP:-true}
+      SECURITY_HSTS_MAX_AGE: ${SECURITY_HSTS_MAX_AGE:-31536000}
+      
+      # Monitoring configuration
+      MONITORING_METRICS_RETENTION_HOURS: ${MONITORING_METRICS_RETENTION_HOURS:-24}
+      MONITORING_ALERT_THRESHOLD_CPU: ${MONITORING_ALERT_THRESHOLD_CPU:-80}
+      MONITORING_ALERT_THRESHOLD_MEMORY: ${MONITORING_ALERT_THRESHOLD_MEMORY:-85}
+      
+      # Performance configuration
+      WORKERS: ${API_WORKERS:-4}
+      MAX_CONNECTIONS: ${API_MAX_CONNECTIONS:-100}
+      TIMEOUT_KEEP_ALIVE: ${API_TIMEOUT_KEEP_ALIVE:-30}
+      
+      # Logging configuration
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SENTRY_DSN: ${SENTRY_DSN}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - api_uploads:/app/uploads
+      - api_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/comprehensive"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
+      - /app/tmp:rw,noexec,nosuid,size=100m
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 65535
+        hard: 65535
+
+  # Production Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: production
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:production
+    container_name: content-repurpose-celery-worker-prod
+    restart: always
+    environment:
+      # Inherit all environment variables from API service
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME:-content_repurpose}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      
+      # Celery specific configuration
+      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-4}
+      CELERY_WORKER_MAX_TASKS_PER_CHILD: ${CELERY_WORKER_MAX_TASKS_PER_CHILD:-1000}
+      CELERY_WORKER_PREFETCH_MULTIPLIER: ${CELERY_WORKER_PREFETCH_MULTIPLIER:-1}
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=${CELERY_WORKER_CONCURRENCY:-4} --max-tasks-per-child=${CELERY_WORKER_MAX_TASKS_PER_CHILD:-1000}
+    volumes:
+      - api_uploads:/app/uploads:ro
+      - celery_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
+      - /app/tmp:rw,noexec,nosuid,size=100m
+
+  # Production Celery Beat
+  celery-beat:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: production
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:production
+    container_name: content-repurpose-celery-beat-prod
+    restart: always
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DATABASE_USER:-postgres}:${DATABASE_PASSWORD}@postgres:5432/${DATABASE_NAME:-content_repurpose}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY}
+      REFRESH_SECRET_KEY: ${REFRESH_SECRET_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    command: celery -A app.core.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    volumes:
+      - celery_beat_data:/tmp
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+  # Production Monitoring with Flower
+  flower:
+    build:
+      context: .
+      dockerfile: deployments/Dockerfile.production
+      args:
+        BUILD_ENV: production
+        ENABLE_OPTIMIZATIONS: "true"
+    image: content-repurpose-api:production
+    container_name: content-repurpose-flower-prod
+    restart: always
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      FLOWER_BASIC_AUTH: ${FLOWER_USERNAME}:${FLOWER_PASSWORD}
+      FLOWER_URL_PREFIX: ${FLOWER_URL_PREFIX:-/flower}
+    command: celery -A app.core.celery_app flower --basic-auth=${FLOWER_USERNAME}:${FLOWER_PASSWORD} --url-prefix=${FLOWER_URL_PREFIX:-/flower}
+    ports:
+      - "${FLOWER_PORT:-5555}:5555"
+    depends_on:
+      - redis
+    networks:
+      - content-repurpose-prod-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+  api_uploads:
+    driver: local
+  api_logs:
+    driver: local
+  celery_logs:
+    driver: local
+  celery_beat_data:
+    driver: local
+
+networks:
+  content-repurpose-prod-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
