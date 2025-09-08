@@ -22,14 +22,33 @@ const Register: React.FC = () => {
       setError('All fields are required');
       return false;
     }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address');
+      return false;
+    }
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return false;
     }
     
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Match backend password requirements
+    if (password.length < 12) {
+      setError('Password must be at least 12 characters long');
+      return false;
+    }
+    
+    // Password complexity validation
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!hasUpperCase || !hasLowerCase || !hasNumbers || !hasSpecialChar) {
+      setError('Password must contain at least one uppercase letter, lowercase letter, number, and special character');
       return false;
     }
     
@@ -50,7 +69,21 @@ const Register: React.FC = () => {
       await register({ username, email, password });
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed. Please try again.');
+      // Handle validation errors properly without exposing sensitive information
+      
+      let errorMessage = 'Registration failed. Please try again.';
+      
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          // FastAPI validation errors - extract the first error message
+          errorMessage = detail[0]?.msg || errorMessage;
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +154,7 @@ const Register: React.FC = () => {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              helperText="Password must be at least 8 characters long"
+              helperText="Password must be at least 12 characters with uppercase, lowercase, number, and special character"
             />
             <TextField
               margin="normal"
