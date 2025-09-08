@@ -35,7 +35,8 @@ const DocumentUpload: React.FC = () => {
 
     // Check file extension
     const allowedExtensions = ['pdf', 'docx', 'txt', 'md'];
-    const fileExt = selectedFile.name.split('.').pop()?.toLowerCase();
+    const fileNameParts = selectedFile.name.split('.');
+    const fileExt = fileNameParts.length > 1 ? fileNameParts.pop()?.toLowerCase() : '';
 
     if (!fileExt || !allowedExtensions.includes(fileExt)) {
       setError(`File type not supported. Allowed types: ${allowedExtensions.join(', ')}`);
@@ -76,7 +77,21 @@ const DocumentUpload: React.FC = () => {
       navigate(`/documents/${response.id}`);
     } catch (err: any) {
       console.error('Upload error:', err);
-      setError(err.response?.data?.detail || 'Failed to upload document. Please try again.');
+      
+      // Handle validation errors properly
+      let errorMessage = 'Failed to upload document. Please try again.';
+      
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          // FastAPI validation errors - extract the first error message
+          errorMessage = detail[0]?.msg || errorMessage;
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

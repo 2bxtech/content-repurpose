@@ -137,7 +137,7 @@ class AuthService:
                 return None
 
             return TokenData(
-                user_id=int(payload.get("sub")),  # Convert back to int
+                user_id=uuid.UUID(payload.get("sub")),  # Convert to UUID
                 email=payload.get("email"),
                 jti=jti,
                 token_type=payload.get("type"),
@@ -252,7 +252,7 @@ class AuthService:
 
     # Session management
     def create_session(
-        self, user_id: int, refresh_token: str, device_info: DeviceInfo
+        self, user_id, refresh_token: str, device_info: DeviceInfo
     ) -> bool:
         """Create a new user session"""
         try:
@@ -268,15 +268,15 @@ class AuthService:
                 return False
 
             return redis_service.create_user_session(
-                user_id=user_id,
+                user_id=str(user_id),  # Convert to string for Redis storage
                 refresh_token_jti=refresh_jti,
                 device_info=device_info.dict(),
             )
         except Exception as e:
-            logger.error(f"Error creating session: {str(e)}")
+            logger.error(f"Error creating user session: {str(e)}")
             return False
 
-    def invalidate_session(self, user_id: int, refresh_token: str) -> bool:
+    def invalidate_session(self, user_id, refresh_token: str) -> bool:
         """Invalidate a specific session"""
         try:
             payload = jwt.decode(
@@ -287,18 +287,18 @@ class AuthService:
             refresh_jti = payload.get("jti")
 
             if refresh_jti:
-                return redis_service.invalidate_user_session(user_id, refresh_jti)
+                return redis_service.invalidate_user_session(str(user_id), refresh_jti)
         except Exception as e:
             logger.error(f"Error invalidating session: {str(e)}")
         return False
 
-    def invalidate_all_sessions(self, user_id: int) -> bool:
+    def invalidate_all_sessions(self, user_id) -> bool:
         """Invalidate all sessions for a user"""
-        return redis_service.invalidate_all_user_sessions(user_id)
+        return redis_service.invalidate_all_user_sessions(str(user_id))
 
-    def get_user_sessions(self, user_id: int) -> list:
+    def get_user_sessions(self, user_id) -> list:
         """Get all active sessions for a user"""
-        return redis_service.get_user_sessions(user_id)
+        return redis_service.get_user_sessions(str(user_id))
 
     # Security utilities
     def generate_secure_token(self, length: int = 32) -> str:

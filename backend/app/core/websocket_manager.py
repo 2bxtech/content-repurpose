@@ -67,8 +67,8 @@ class ConnectionManager:
             return
 
         try:
-            self.pubsub = redis_service.redis.pubsub()
-            await self.pubsub.subscribe("websocket:broadcast")
+            self.pubsub = redis_service.redis_client.pubsub()
+            self.pubsub.subscribe("websocket:broadcast")  # Remove await here
 
             self.redis_listener_task = asyncio.create_task(self._redis_listener())
         except Exception as e:
@@ -90,14 +90,21 @@ class ConnectionManager:
     async def _redis_listener(self):
         """Listen for Redis pub/sub messages"""
         try:
-            async for message in self.pubsub.listen():
-                if message["type"] == "message":
-                    try:
-                        data = json.loads(message["data"])
-                        ws_message = WebSocketMessage(**data)
-                        await self._handle_redis_message(ws_message)
-                    except Exception as e:
-                        print(f"Error processing Redis message: {e}")
+            # Use get_message() in a loop instead of async for
+            while True:
+                try:
+                    message = self.pubsub.get_message(timeout=1.0)
+                    if message and message["type"] == "message":
+                        try:
+                            data = json.loads(message["data"])
+                            ws_message = WebSocketMessage(**data)
+                            await self._handle_redis_message(ws_message)
+                        except Exception as e:
+                            print(f"Error processing Redis message: {e}")
+                    await asyncio.sleep(0.01)  # Small delay to prevent tight loop
+                except Exception as e:
+                    print(f"Error getting Redis message: {e}")
+                    await asyncio.sleep(1)  # Wait before retrying
         except asyncio.CancelledError:
             pass
         except Exception as e:
@@ -256,7 +263,8 @@ class ConnectionManager:
             return
 
         try:
-            await redis_service.redis.publish(
+            # Use synchronous publish, not async
+            redis_service.redis_client.publish(
                 "websocket:broadcast", json.dumps(message.dict(), default=str)
             )
         except Exception as e:

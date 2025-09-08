@@ -7,9 +7,6 @@ import logging
 # Add database imports
 from app.core.database import init_db
 
-# Add route imports
-from app.api.routes import auth, documents, transformations
-
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -57,13 +54,8 @@ async def health_check():
     return {"status": "healthy", "message": "API is running"}
 
 # Include auth routes
+from app.api.routes import auth
 app.include_router(auth.router, prefix="/api")
-
-# Include documents routes
-app.include_router(documents.router, prefix="/api")
-
-# Include transformations routes  
-app.include_router(transformations.router, prefix="/api")
 
 # Simple test route for registration debugging
 class TestUser(BaseModel):

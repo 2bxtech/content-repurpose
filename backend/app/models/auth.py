@@ -6,8 +6,10 @@ import uuid
 
 
 class UserRole(str, Enum):
+    OWNER = "owner"
     ADMIN = "admin"
-    USER = "user"
+    MEMBER = "member"
+    VIEWER = "viewer"
 
 
 class UserBase(BaseModel):
@@ -53,7 +55,7 @@ class User(UserBase):
     id: uuid.UUID
     is_active: bool = True
     is_verified: bool = False
-    role: UserRole = UserRole.USER
+    role: UserRole = UserRole.MEMBER
     created_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
 
