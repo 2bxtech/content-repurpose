@@ -1,29 +1,17 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import logging
-
-# Add database imports
-from app.core.database import init_db
-
-# Add route imports
-from app.api.routes import auth, documents, transformations
 
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Test with database initialization only"""
+    """Minimal lifespan for debugging"""
     logger.info("=== STARTUP: Application starting ===")
     
-    try:
-        logger.info("=== STARTUP: Initializing database ===")
-        await init_db()
-        logger.info("=== STARTUP: Database initialized successfully ===")
-    except Exception as e:
-        logger.error(f"=== STARTUP: Database initialization failed: {e} ===")
-        # Continue anyway for testing
+    # Don't initialize any services for now - just test basic functionality
+    logger.info("=== STARTUP: Skipping service initialization for debugging ===")
     
     yield
     
@@ -56,22 +44,15 @@ app = create_app()
 async def health_check():
     return {"status": "healthy", "message": "API is running"}
 
-# Include auth routes
-app.include_router(auth.router, prefix="/api")
-
-# Include documents routes
-app.include_router(documents.router, prefix="/api")
-
-# Include transformations routes  
-app.include_router(transformations.router, prefix="/api")
-
 # Simple test route for registration debugging
+from pydantic import BaseModel
+
 class TestUser(BaseModel):
     email: str
     username: str
     password: str
 
-@app.post("/api/auth/test-register-simple")
+@app.post("/api/auth/test-register")
 async def test_register(user: TestUser):
     """Minimal test registration endpoint"""
     logger.info(f"Test registration attempt: {user.email}")

@@ -88,6 +88,7 @@ class MetricsCollector:
         self.histograms = defaultdict(list)
         self.timers = defaultdict(list)
         self.active_alerts = {}
+        self.initialized = False
 
         # Alert thresholds
         self.alert_thresholds = {
@@ -102,6 +103,33 @@ class MetricsCollector:
             "ai_cost_per_hour": {"warning": 5.0, "critical": 10.0},
             "failed_transformations_rate": {"warning": 0.1, "critical": 0.2},
         }
+
+    async def initialize(self):
+        """Initialize the metrics collector"""
+        try:
+            logger.info("Initializing MetricsCollector")
+            # Initialize any required resources
+            self.initialized = True
+            logger.info("MetricsCollector initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize MetricsCollector: {e}")
+            # Don't raise - allow service to continue without metrics
+            self.initialized = False
+
+    async def cleanup(self):
+        """Cleanup metrics collector resources"""
+        try:
+            logger.info("Cleaning up MetricsCollector")
+            self.metrics_buffer.clear()
+            self.counters.clear()
+            self.gauges.clear()
+            self.histograms.clear()
+            self.timers.clear()
+            self.active_alerts.clear()
+            self.initialized = False
+            logger.info("MetricsCollector cleanup complete")
+        except Exception as e:
+            logger.error(f"Error during MetricsCollector cleanup: {e}")
 
     async def record_metric(
         self,

@@ -277,12 +277,17 @@ class WorkspaceService:
         return True, None
 
     async def create_default_workspace(
-        self, db: AsyncSession, user_id: uuid.UUID
+        self, db: AsyncSession, user_id: Optional[uuid.UUID]
     ) -> Workspace:
         """Create a default workspace for a new user"""
 
         # Generate unique slug
-        base_slug = f"user-{str(user_id)[:8]}"
+        if user_id:
+            base_slug = f"user-{str(user_id)[:8]}"
+        else:
+            # Use a random UUID if user_id is not available yet
+            base_slug = f"workspace-{str(uuid.uuid4())[:8]}"
+            
         slug = base_slug
         counter = 1
 
@@ -313,7 +318,7 @@ class WorkspaceService:
             },
             description="Your personal workspace",
             is_active=True,
-            created_by=user_id,
+            created_by=user_id,  # Can be None initially, will be updated later
         )
 
         db.add(workspace)

@@ -25,7 +25,7 @@ class User(BaseModel):
 
     # Multi-tenant support
     workspace_id = Column(
-        UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("workspaces.id"), nullable=True
     )
     role = Column(SQLEnum(UserRole), default=UserRole.MEMBER, nullable=False)
 

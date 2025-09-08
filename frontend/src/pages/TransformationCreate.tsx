@@ -90,7 +90,21 @@ const TransformationCreatePage: React.FC = () => {
       navigate(`/transformations/${result.id}`);
     } catch (err: any) {
       console.error('Error creating transformation:', err);
-      setError(err.response?.data?.detail || 'Failed to create transformation. Please try again.');
+      
+      // Handle validation errors properly
+      let errorMessage = 'Failed to create transformation. Please try again.';
+      
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          // FastAPI validation errors - extract the first error message
+          errorMessage = detail[0]?.msg || errorMessage;
+        } else if (typeof detail === 'string') {
+          errorMessage = detail;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

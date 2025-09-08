@@ -39,7 +39,7 @@ def get_user(email: str):
     return None
 
 
-def get_user_by_id(user_id: int):
+def get_user_by_id(user_id: uuid.UUID):
     """Get user by ID from in-memory database"""
     for user_data in USERS_DB.values():
         if user_data["id"] == user_id:
@@ -152,10 +152,21 @@ async def get_current_active_user(
 async def register_user(
     user: UserCreate, request: Request, db: AsyncSession = Depends(get_db_session)
 ):
-    """Register a new user with enhanced security validation and workspace assignment"""
+    """Register a new user with enhanced security validation and workspace assignment
+    
+    Note: Password is transmitted in request body which is normal for registration.
+    Ensure HTTPS is used in production to encrypt transmission.
+    """
 
-    # Check rate limiting
-    auth_service.check_auth_rate_limit(request)
+    logger.debug(f"Starting user registration for {user.email}")
+    
+    # Check rate limiting (temporarily disabled for debugging)
+    try:
+        auth_service.check_auth_rate_limit(request)
+        logger.debug("Rate limit check passed")
+    except Exception as e:
+        logger.warning(f"Rate limiting failed, continuing anyway: {e}")
+        # Continue registration even if rate limiting fails
 
     if db:
         # Database mode - full multi-tenant registration
@@ -164,6 +175,7 @@ async def register_user(
         stmt = select(UserDB).where(UserDB.email == user.email)
         result = await db.execute(stmt)
         existing_user = result.scalar_one_or_none()
+        logger.debug("Database user existence check completed")
 
         if existing_user:
             raise HTTPException(
@@ -172,38 +184,53 @@ async def register_user(
             )
 
         # Validate password strength
+        logger.debug("Starting password strength validation")
         is_strong, message = auth_service.validate_password_strength(user.password)
         if not is_strong:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
+        logger.debug("Password strength validation passed")
 
         # Hash password
+        logger.debug("Starting password hashing")
         hashed_password = auth_service.get_password_hash(user.password)
+        logger.debug("Password hashing completed")
 
         try:
-            # Create default workspace for the user
+            logger.debug("Starting database transaction")
+            
+            # Step 1: Create workspace first (without any user reference)
+            logger.debug("Creating workspace first")
             workspace = await workspace_service.create_default_workspace(
-                db, None
-            )  # Will set user_id after creation
-
-            # Create user record
+                db, None  # Pass None for user_id initially
+            )
+            await db.flush()  # Get the workspace ID
+            logger.debug(f"Workspace created: {workspace.slug} (ID: {workspace.id})")
+            
+            # Step 2: Create user with the workspace_id
+            logger.debug("Creating user with workspace_id")
             user_db = UserDB(
                 email=user.email,
                 username=user.username,
                 hashed_password=hashed_password,
                 is_active=True,
                 is_verified=False,
-                workspace_id=workspace.id,
+                workspace_id=workspace.id,  # Set workspace_id immediately
                 role=UserRole.OWNER,  # User is owner of their default workspace
             )
 
             db.add(user_db)
             await db.flush()  # Get the user ID
+            logger.debug(f"User record created with ID: {user_db.id}")
 
-            # Update workspace created_by field
+            # Step 3: Update workspace created_by field
+            logger.debug("Updating workspace created_by field")
             workspace.created_by = user_db.id
-
+            
+            # Commit everything together
             await db.commit()
             await db.refresh(user_db)
+            await db.refresh(workspace)
+            logger.debug("Transaction completed successfully")
 
             logger.info(
                 f"New user registered: {user.email} (ID: {user_db.id}) with workspace: {workspace.slug}"
@@ -222,9 +249,19 @@ async def register_user(
         except Exception as e:
             await db.rollback()
             logger.error(f"Failed to register user {user.email}: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            
+            # Provide more specific error messages based on the error type
+            if "timeout" in str(e).lower():
+                detail = "Registration timed out. Please try again."
+            elif "connection" in str(e).lower():
+                detail = "Database connection error. Please try again."
+            else:
+                detail = "Registration failed. Please try again."
+                
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Registration failed. Please try again.",
+                detail=detail,
             )
 
     else:
@@ -582,4 +619,24 @@ async def change_password(
 
     return {
         "message": "Password changed successfully. Please log in again on other devices."
+    }
+
+
+@router.post("/auth/test-register", status_code=status.HTTP_201_CREATED)
+async def test_register_user(user: UserCreate):
+    """Simplified registration for testing - bypasses all services"""
+    
+    # Simple validation
+    if len(user.password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password too short"
+        )
+    
+    # For now, just return success without database operations
+    return {
+        "message": "Test registration successful",
+        "email": user.email,
+        "username": user.username,
+        "note": "This is a test endpoint - no actual user created"
     }

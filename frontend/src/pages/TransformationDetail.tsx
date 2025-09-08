@@ -58,7 +58,7 @@ const TransformationDetail: React.FC = () => {
       
       try {
         setLoading(true);
-        const transformationData = await getTransformation(parseInt(id));
+        const transformationData = await getTransformation(id);
         setTransformation(transformationData);
         setEditedContent(transformationData.result || '');
         
@@ -102,7 +102,7 @@ const TransformationDetail: React.FC = () => {
     if (!id) return;
     
     try {
-      const updatedTransformation = await getTransformation(parseInt(id));
+      const updatedTransformation = await getTransformation(id);
       setTransformation(updatedTransformation);
       setEditedContent(updatedTransformation.result || '');
       
