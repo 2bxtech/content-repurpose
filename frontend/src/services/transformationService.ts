@@ -50,7 +50,7 @@ export const pollTransformationStatus = (
       onUpdate(status);
       
       // Check if transformation is complete
-      if (status.database_status === 'completed' || status.database_status === 'failed') {
+      if (status.database_status === 'COMPLETED' || status.database_status === 'FAILED') {
         polling = false;
         onComplete(status);
         return;

@@ -12,7 +12,7 @@ from app.tasks.transformation_tasks import (
     get_task_status,
     cancel_task,
 )
-from app.models.transformations import TransformationType
+from app.models.transformation import TransformationType
 
 
 class TaskService:

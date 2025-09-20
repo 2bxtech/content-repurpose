@@ -1,36 +1,41 @@
+# FastAPI and core dependencies - matching your versions
 fastapi==0.104.1
 uvicorn==0.23.2
 pydantic==2.4.2
 pydantic[email]==2.4.2
 pydantic-settings==2.0.3
 python-multipart==0.0.6
+python-dotenv==1.0.0
+
+# Authentication and security - your versions
 python-jose==3.3.0
 passlib==1.7.4
 bcrypt==4.0.1
-openai==1.3.7
-anthropic==0.7.4
-python-dotenv==1.0.0
-pytest==7.4.3
-httpx==0.25.0
-anyio==3.7.1
-redis==5.0.1
-slowapi==0.1.9
+cryptography==41.0.7
 email-validator==2.1.0
 
-# WebSocket support
-websockets==12.0
-
-# Background processing
-celery==5.3.4
-kombu==5.3.4
-
-# Database dependencies
+# Database dependencies - your versions
 sqlalchemy==2.0.23
 asyncpg==0.29.0
 alembic==1.13.0
 psycopg2-binary==2.9.9
 
-# Phase 6: File Processing Enhancement
+# Redis for session management and rate limiting - your version
+redis==5.0.1
+slowapi==0.1.9
+
+# Background processing - your versions
+celery==5.3.4
+kombu==5.3.4
+
+# AI Provider APIs - your versions
+openai==1.3.7
+anthropic==0.7.4
+
+# WebSocket support (from your requirements)
+websockets==12.0
+
+# File Processing Enhancement (Phase 6) - your versions
 PyPDF2==3.0.1
 python-docx==1.1.0
 pymupdf==1.23.8
@@ -40,16 +45,42 @@ python-magic-bin==0.4.14; platform_system=="Windows"
 clamd==1.0.2
 chardet==5.2.0
 
-# Phase 7: AI Provider Management
-# openai==1.3.7  # Already included above
-# anthropic==0.7.4  # Already included above
-# redis==5.0.1  # Already included above for usage tracking
-
-# Phase 8: Advanced Security & Monitoring
-cryptography==41.0.7
+# Advanced Security & Monitoring (Phase 8) - your versions
 psutil==5.9.6
 prometheus-client==0.19.0
 aiofiles==23.2.1
 structlog==23.2.0
 click==8.1.7
 APScheduler==3.10.4
+
+# Testing dependencies - your versions
+pytest==7.4.3
+httpx==0.25.0
+anyio==3.7.1
+
+# Additional packages I included that you might want:
+# hiredis==2.2.3  # Better Redis performance
+# flower==2.0.1  # Celery monitoring UI
+# python-docx==1.1.0  # Already in your list
+# openpyxl==3.1.2  # Excel file support
+# azure-openai==1.0.0  # Azure OpenAI support
+# aiohttp==3.9.1  # Additional HTTP client
+# sentry-sdk[fastapi]==1.38.0  # Error tracking
+# aiocache==0.12.2  # Async caching
+# validators==0.22.0  # Data validation utilities
+# rich==13.7.0  # Rich terminal output
+# typer==0.9.0  # CLI framework
+# safety==2.3.5  # Security scanning
+# bandit==1.7.5  # Security linting
+
+# Development tools (optional)
+# black==23.11.0  # Code formatting
+# isort==5.12.0  # Import sorting
+# flake8==6.1.0  # Linting
+# mypy==1.7.1  # Type checking
+# pytest-asyncio==0.21.1  # Async testing
+# pytest-mock==3.12.0  # Mocking
+# pytest-cov==4.1.0  # Coverage
+
+# Production deployment
+# gunicorn==21.2.0  # WSGI server

@@ -9,9 +9,7 @@ addopts = [
     "--cov-report=html:tests/coverage_html",
     "--cov-report=xml:tests/coverage.xml",
     "--html=tests/report.html",
-    "--self-contained-html",
-    "--json-report",
-    "--json-report-file=tests/report.json"
+    "--self-contained-html"
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
@@ -25,6 +23,8 @@ markers = [
     "celery: Celery/background processing tests",
     "database: Database tests",
     "redis: Redis tests",
+    "docker: Docker integration tests",
+    "smoke: Smoke tests",
     "slow: Slow running tests",
     "skip_ci: Skip in CI environment"
 ]

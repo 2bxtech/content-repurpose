@@ -1,26 +1,29 @@
-from pydantic import BaseModel
-from typing import Optional, List
+"""
+Document models for Content Repurpose API
+"""
+
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 from enum import Enum
 import uuid
 
 
 class DocumentStatus(str, Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    """Document processing status"""
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class DocumentBase(BaseModel):
-    title: str
+    title: str = Field(..., max_length=255)
     description: Optional[str] = None
 
 
 class DocumentCreate(DocumentBase):
-    file_path: str
-    original_filename: str
-    content_type: str
+    pass
 
 
 class Document(DocumentBase):
@@ -40,3 +43,24 @@ class Document(DocumentBase):
 class DocumentList(BaseModel):
     documents: List[Document]
     count: int
+
+
+class FileProcessingResult(BaseModel):
+    file_path: str
+    content: str
+    metadata: Dict[str, Any]
+    file_hash: str
+    preview_path: Optional[str] = None
+    content_encoding: str
+    word_count: int
+    extraction_method: str
+    security_scan_passed: bool
+
+
+class FileUploadResponse(BaseModel):
+    document_id: uuid.UUID
+    filename: str
+    size: int
+    content_type: str
+    status: str
+    message: str

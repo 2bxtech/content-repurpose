@@ -27,7 +27,7 @@ const TransformationCreatePage: React.FC = () => {
       
       try {
         setDocumentLoading(true);
-        const fetchedDocument = await getDocument(parseInt(documentId));
+        const fetchedDocument = await getDocument(documentId);
         setDocument(fetchedDocument);
       } catch (err: any) {
         console.error('Error fetching document:', err);

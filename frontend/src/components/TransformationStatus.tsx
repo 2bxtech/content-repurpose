@@ -66,17 +66,17 @@ const TransformationStatus: React.FC<TransformationStatusProps> = ({
     
     switch (messageType) {
       case 'transformation_started':
-        setStatus('processing');
+        setStatus('PROCESSING');
         setError(null);
         break;
       
       case 'transformation_progress':
-        setStatus('processing');
+        setStatus('PROCESSING');
         setError(null);
         break;
       
       case 'transformation_completed':
-        setStatus('completed');
+        setStatus('COMPLETED');
         setProgress(100);
         setError(null);
         setResultPreview(update.result_preview || null);
@@ -87,7 +87,7 @@ const TransformationStatus: React.FC<TransformationStatusProps> = ({
         break;
       
       case 'transformation_failed':
-        setStatus('failed');
+        setStatus('FAILED');
         setError(update.error_message || 'Transformation failed');
         break;
     }
@@ -119,23 +119,23 @@ const TransformationStatus: React.FC<TransformationStatusProps> = ({
 
   const getStatusColor = () => {
     switch (status) {
-      case 'pending': return 'default';
-      case 'processing': return 'primary';
-      case 'completed': return 'success';
-      case 'failed': return 'error';
+      case 'PENDING': return 'default';
+      case 'PROCESSING': return 'primary';
+      case 'COMPLETED': return 'success';
+      case 'FAILED': return 'error';
       default: return 'default';
     }
   };
 
   const getStatusIcon = () => {
     switch (status) {
-      case 'pending':
+      case 'PENDING':
         return <AccessTime />;
-      case 'processing':
+      case 'PROCESSING':
         return <PlayArrow />;
-      case 'completed':
+      case 'COMPLETED':
         return <CheckCircle />;
-      case 'failed':
+      case 'FAILED':
         return <ErrorIcon />;
       default:
         return <AccessTime />;
@@ -191,7 +191,7 @@ const TransformationStatus: React.FC<TransformationStatusProps> = ({
         </Box>
 
         {/* Progress Bar */}
-        {status === 'processing' && (
+        {status === 'PROCESSING' && (
           <Box mb={2}>
             <LinearProgress 
               variant="determinate" 
@@ -224,7 +224,7 @@ const TransformationStatus: React.FC<TransformationStatusProps> = ({
         )}
 
         {/* Success with Preview */}
-        {status === 'completed' && resultPreview && (
+        {status === 'COMPLETED' && resultPreview && (
           <Alert severity="success" sx={{ mb: 2 }}>
             <Typography variant="body2" fontWeight="bold" mb={1}>
               Transformation completed successfully!

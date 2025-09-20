@@ -1,3 +1,8 @@
+"""
+Authentication Router with Enterprise Features
+Based on your existing sophisticated auth system
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime
@@ -16,15 +21,16 @@ from app.models.auth import (
     PasswordChangeRequest,
     UserProfile,
     UserSession,
+    UserRole,
 )
-from app.db.models.user import User as UserDB, UserRole
+from app.db.models.user import User as UserDB, UserRole as DBUserRole
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.services.auth_service import auth_service
 from app.services.redis_service import redis_service
 from app.services.workspace_service import workspace_service
 
-# This is still a mock database - will be replaced with real database when connected
+# In-memory fallback database
 USERS_DB = {}
 
 router = APIRouter()
@@ -104,22 +110,25 @@ async def get_current_user(
 
         # Convert to dict for compatibility
         user_dict = {
-            "id": user.id,
+            "id": str(user.id),  # Convert UUID to string
+            "sub": str(user.id),
             "email": user.email,
             "username": user.username,
             "hashed_password": user.hashed_password,
             "is_active": user.is_active,
             "is_verified": user.is_verified,
             "role": user.role.value,
-            "workspace_id": user.workspace_id,
+            "workspace_id": str(user.workspace_id) if user.workspace_id else None,  # Convert UUID to string
             "created_at": user.created_at,
             "last_login": getattr(user, "last_login", None),
         }
 
         # Update last activity if session tracking is enabled
         if token_data.jti:
-            # Note: In production, this would update the session in the database
-            pass
+            try:
+                redis_service.update_session_activity(str(user.id), token_data.jti)
+            except Exception as e:
+                logger.warning(f"Failed to update session activity: {e}")
 
         return user_dict
 
@@ -128,11 +137,6 @@ async def get_current_user(
         user = get_user_by_id(token_data.user_id)
         if user is None:
             raise credentials_exception
-
-        # Update last activity if session tracking is enabled
-        if token_data.jti:
-            # Note: In production, this would update the session in the database
-            pass
 
         return user
 
@@ -148,35 +152,28 @@ async def get_current_active_user(
     return current_user
 
 
-@router.post("/auth/register", response_model=User, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user: UserCreate, request: Request, db: AsyncSession = Depends(get_db_session)
 ):
-    """Register a new user with enhanced security validation and workspace assignment
-    
-    Note: Password is transmitted in request body which is normal for registration.
-    Ensure HTTPS is used in production to encrypt transmission.
-    """
+    """Register a new user with enhanced security validation and workspace assignment"""
 
     logger.debug(f"Starting user registration for {user.email}")
     
-    # Check rate limiting (temporarily disabled for debugging)
+    # Check rate limiting
     try:
         auth_service.check_auth_rate_limit(request)
         logger.debug("Rate limit check passed")
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
-        logger.warning(f"Rate limiting failed, continuing anyway: {e}")
-        # Continue registration even if rate limiting fails
+        logger.warning(f"Rate limiting check failed: {e}")
 
     if db:
         # Database mode - full multi-tenant registration
 
         # Check if user already exists
-        stmt = select(UserDB).where(UserDB.email == user.email)
-        result = await db.execute(stmt)
-        existing_user = result.scalar_one_or_none()
-        logger.debug("Database user existence check completed")
-
+        existing_user = await get_db_user(db, user.email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -184,57 +181,39 @@ async def register_user(
             )
 
         # Validate password strength
-        logger.debug("Starting password strength validation")
         is_strong, message = auth_service.validate_password_strength(user.password)
         if not is_strong:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
-        logger.debug("Password strength validation passed")
 
         # Hash password
-        logger.debug("Starting password hashing")
         hashed_password = auth_service.get_password_hash(user.password)
-        logger.debug("Password hashing completed")
 
         try:
-            logger.debug("Starting database transaction")
-            
-            # Step 1: Create workspace first (without any user reference)
-            logger.debug("Creating workspace first")
-            workspace = await workspace_service.create_default_workspace(
-                db, None  # Pass None for user_id initially
-            )
-            await db.flush()  # Get the workspace ID
-            logger.debug(f"Workspace created: {workspace.slug} (ID: {workspace.id})")
+            # Step 1: Create workspace first
+            workspace = await workspace_service.create_default_workspace(db, None)
+            await db.flush()
             
             # Step 2: Create user with the workspace_id
-            logger.debug("Creating user with workspace_id")
             user_db = UserDB(
                 email=user.email,
                 username=user.username,
                 hashed_password=hashed_password,
                 is_active=True,
                 is_verified=False,
-                workspace_id=workspace.id,  # Set workspace_id immediately
-                role=UserRole.OWNER,  # User is owner of their default workspace
+                workspace_id=workspace.id,
+                role=DBUserRole.OWNER,
             )
 
             db.add(user_db)
-            await db.flush()  # Get the user ID
-            logger.debug(f"User record created with ID: {user_db.id}")
+            await db.flush()
 
             # Step 3: Update workspace created_by field
-            logger.debug("Updating workspace created_by field")
             workspace.created_by = user_db.id
             
-            # Commit everything together
             await db.commit()
             await db.refresh(user_db)
-            await db.refresh(workspace)
-            logger.debug("Transaction completed successfully")
 
-            logger.info(
-                f"New user registered: {user.email} (ID: {user_db.id}) with workspace: {workspace.slug}"
-            )
+            logger.info(f"New user registered: {user.email} (ID: {user_db.id})")
 
             return User(
                 id=user_db.id,
@@ -242,56 +221,43 @@ async def register_user(
                 username=user_db.username,
                 is_active=user_db.is_active,
                 is_verified=user_db.is_verified,
-                role=user_db.role.value,
+                role=UserRole(user_db.role.value),
                 created_at=user_db.created_at,
             )
 
         except Exception as e:
             await db.rollback()
             logger.error(f"Failed to register user {user.email}: {str(e)}")
-            logger.error(f"Error type: {type(e).__name__}")
-            
-            # Provide more specific error messages based on the error type
-            if "timeout" in str(e).lower():
-                detail = "Registration timed out. Please try again."
-            elif "connection" in str(e).lower():
-                detail = "Database connection error. Please try again."
-            else:
-                detail = "Registration failed. Please try again."
-                
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=detail,
+                detail="Registration failed. Please try again.",
             )
 
     else:
         # Fallback to in-memory mode
-
-        # Check if user already exists
         if user.email in USERS_DB:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered",
             )
 
-        # Validate password strength (additional validation beyond Pydantic)
+        # Validate password strength
         is_strong, message = auth_service.validate_password_strength(user.password)
         if not is_strong:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
-        # Hash password with secure settings
+        # Hash password
         hashed_password = auth_service.get_password_hash(user.password)
-        user_id = len(USERS_DB) + 1
+        user_id = uuid.uuid4()
 
-        # Create user record
         user_data = {
             "id": user_id,
             "email": user.email,
             "username": user.username,
             "hashed_password": hashed_password,
             "is_active": True,
-            "is_verified": False,  # Email verification would be implemented in production
-            "role": "user",
+            "is_verified": False,
+            "role": UserRole.MEMBER.value,
             "created_at": datetime.utcnow(),
             "last_login": None,
         }
@@ -306,12 +272,12 @@ async def register_user(
             username=user.username,
             is_active=True,
             is_verified=False,
-            role="user",
+            role=UserRole.MEMBER,
             created_at=user_data["created_at"],
         )
 
 
-@router.post("/auth/token", response_model=Token)
+@router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
@@ -326,16 +292,13 @@ async def login_for_access_token(
         # Database mode
         user = await authenticate_db_user(db, form_data.username, form_data.password)
         if not user:
-            logger.warning(
-                f"Failed login attempt for: {form_data.username} from {auth_service._get_client_ip(request)}"
-            )
+            logger.warning(f"Failed login attempt for: {form_data.username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Check if user is active
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Account is deactivated"
@@ -356,13 +319,7 @@ async def login_for_access_token(
         # Create session
         auth_service.create_session(user.id, refresh_token, device_info)
 
-        # Update last login (if this field exists in your model)
-        # user.last_login = datetime.utcnow()
-        # await db.commit()
-
-        logger.info(
-            f"Successful login: {user.email} (ID: {user.id}) from {device_info.ip_address}"
-        )
+        logger.info(f"Successful login: {user.email} (ID: {user.id})")
 
         return Token(
             access_token=access_token,
@@ -375,16 +332,13 @@ async def login_for_access_token(
         # In-memory mode
         user = authenticate_user(form_data.username, form_data.password)
         if not user:
-            logger.warning(
-                f"Failed login attempt for: {form_data.username} from {auth_service._get_client_ip(request)}"
-            )
+            logger.warning(f"Failed login attempt for: {form_data.username}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Check if user is active
         if not user.get("is_active", False):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="Account is deactivated"
@@ -405,12 +359,9 @@ async def login_for_access_token(
         # Create session
         auth_service.create_session(user["id"], refresh_token, device_info)
 
-        # Update last login
         user["last_login"] = datetime.utcnow()
 
-        logger.info(
-            f"Successful login: {user['email']} (ID: {user['id']}) from {device_info.ip_address}"
-        )
+        logger.info(f"Successful login: {user['email']} (ID: {user['id']})")
 
         return Token(
             access_token=access_token,
@@ -420,7 +371,7 @@ async def login_for_access_token(
         )
 
 
-@router.post("/auth/refresh", response_model=Token)
+@router.post("/refresh", response_model=Token)
 async def refresh_access_token(refresh_request: RefreshTokenRequest, request: Request):
     """Refresh access token using refresh token"""
 
@@ -444,7 +395,10 @@ async def refresh_access_token(refresh_request: RefreshTokenRequest, request: Re
 
     # Update session activity
     if token_data.jti:
-        redis_service.update_session_activity(user["id"], token_data.jti)
+        try:
+            redis_service.update_session_activity(user["id"], token_data.jti)
+        except Exception as e:
+            logger.warning(f"Failed to update session activity: {e}")
 
     # Create new access token
     access_token = auth_service.create_access_token(
@@ -455,17 +409,16 @@ async def refresh_access_token(refresh_request: RefreshTokenRequest, request: Re
 
     return Token(
         access_token=access_token,
-        refresh_token=refresh_request.refresh_token,  # Reuse existing refresh token
+        refresh_token=refresh_request.refresh_token,
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
-@router.post("/auth/logout")
+@router.post("/logout")
 async def logout(
     logout_request: LogoutRequest,
     current_user: Annotated[dict, Depends(get_current_active_user)],
-    request: Request,
 ):
     """Logout user and invalidate tokens"""
 
@@ -474,18 +427,14 @@ async def logout(
     if logout_request.logout_all:
         # Logout from all devices
         auth_service.invalidate_all_sessions(user_id)
-        logger.info(
-            f"User logged out from all devices: {current_user['email']} (ID: {user_id})"
-        )
+        logger.info(f"User logged out from all devices: {current_user['email']}")
         return {"message": "Logged out from all devices successfully"}
 
     elif logout_request.refresh_token:
         # Logout from specific session
         auth_service.blacklist_token(logout_request.refresh_token, "refresh")
         auth_service.invalidate_session(user_id, logout_request.refresh_token)
-        logger.info(
-            f"User logged out from device: {current_user['email']} (ID: {user_id})"
-        )
+        logger.info(f"User logged out from device: {current_user['email']}")
         return {"message": "Logged out successfully"}
 
     else:
@@ -495,14 +444,19 @@ async def logout(
         )
 
 
-@router.get("/auth/me", response_model=UserProfile)
+@router.get("/me", response_model=UserProfile)
 async def read_users_me(
     current_user: Annotated[dict, Depends(get_current_active_user)],
 ):
     """Get current user profile with session information"""
 
     # Get active sessions count
-    sessions = auth_service.get_user_sessions(current_user["id"])
+    try:
+        sessions = auth_service.get_user_sessions(current_user["id"])
+        active_sessions = len(sessions)
+    except Exception as e:
+        logger.warning(f"Failed to get user sessions: {e}")
+        active_sessions = 0
 
     return UserProfile(
         id=current_user["id"],
@@ -510,37 +464,39 @@ async def read_users_me(
         username=current_user["username"],
         is_active=current_user["is_active"],
         is_verified=current_user.get("is_verified", False),
-        role=current_user.get("role", "user"),
+        role=UserRole(current_user.get("role", "member")),
         created_at=current_user.get("created_at"),
         last_login=current_user.get("last_login"),
-        active_sessions=len(sessions),
+        active_sessions=active_sessions,
     )
 
 
-@router.get("/auth/sessions", response_model=List[UserSession])
+@router.get("/sessions", response_model=List[UserSession])
 async def get_user_sessions(
     current_user: Annotated[dict, Depends(get_current_active_user)],
 ):
     """Get all active sessions for the current user"""
 
-    sessions = auth_service.get_user_sessions(current_user["id"])
-
-    session_list = []
-    for session in sessions:
-        session_list.append(
-            UserSession(
-                user_id=session["user_id"],
-                refresh_token_jti=session["refresh_token_jti"],
-                created_at=datetime.fromisoformat(session["created_at"]),
-                last_activity=datetime.fromisoformat(session["last_activity"]),
-                device_info=session["device_info"],
+    try:
+        sessions = auth_service.get_user_sessions(current_user["id"])
+        session_list = []
+        for session in sessions:
+            session_list.append(
+                UserSession(
+                    user_id=uuid.UUID(session["user_id"]),
+                    refresh_token_jti=session["refresh_token_jti"],
+                    created_at=datetime.fromisoformat(session["created_at"]),
+                    last_activity=datetime.fromisoformat(session["last_activity"]),
+                    device_info=session["device_info"],
+                )
             )
-        )
+        return session_list
+    except Exception as e:
+        logger.error(f"Failed to get user sessions: {e}")
+        return []
 
-    return session_list
 
-
-@router.delete("/auth/sessions/{session_jti}")
+@router.delete("/sessions/{session_jti}")
 async def revoke_session(
     session_jti: str, current_user: Annotated[dict, Depends(get_current_active_user)]
 ):
@@ -549,28 +505,37 @@ async def revoke_session(
     user_id = current_user["id"]
 
     # Verify the session belongs to the current user
-    sessions = auth_service.get_user_sessions(user_id)
-    session_exists = any(s["refresh_token_jti"] == session_jti for s in sessions)
+    try:
+        sessions = auth_service.get_user_sessions(user_id)
+        session_exists = any(s["refresh_token_jti"] == session_jti for s in sessions)
 
-    if not session_exists:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
-        )
+        if not session_exists:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+            )
 
-    # Revoke the session
-    success = redis_service.invalidate_user_session(user_id, session_jti)
+        # Revoke the session
+        success = redis_service.invalidate_user_session(user_id, session_jti)
 
-    if success:
-        logger.info(f"Session revoked: {session_jti} for user {current_user['email']}")
-        return {"message": "Session revoked successfully"}
-    else:
+        if success:
+            logger.info(f"Session revoked: {session_jti} for user {current_user['email']}")
+            return {"message": "Session revoked successfully"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to revoke session",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error revoking session: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to revoke session",
         )
 
 
-@router.post("/auth/change-password")
+@router.post("/change-password")
 async def change_password(
     password_request: PasswordChangeRequest,
     current_user: Annotated[dict, Depends(get_current_active_user)],
@@ -613,30 +578,22 @@ async def change_password(
     # Invalidate all other sessions (security best practice)
     auth_service.invalidate_all_sessions(current_user["id"])
 
-    logger.info(
-        f"Password changed for user: {current_user['email']} (ID: {current_user['id']})"
-    )
+    logger.info(f"Password changed for user: {current_user['email']}")
 
     return {
         "message": "Password changed successfully. Please log in again on other devices."
     }
 
 
-@router.post("/auth/test-register", status_code=status.HTTP_201_CREATED)
-async def test_register_user(user: UserCreate):
-    """Simplified registration for testing - bypasses all services"""
-    
-    # Simple validation
-    if len(user.password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password too short"
-        )
-    
-    # For now, just return success without database operations
+@router.get("/verify-token")
+async def verify_token(current_user: dict = Depends(get_current_active_user)):
+    """Verify if token is valid"""
     return {
-        "message": "Test registration successful",
-        "email": user.email,
-        "username": user.username,
-        "note": "This is a test endpoint - no actual user created"
+        "valid": True,
+        "user_id": str(current_user["id"]),
+        "email": current_user["email"],
+        "username": current_user["username"],
+        "role": current_user.get("role", "member"),
+        "workspace_id": str(current_user.get("workspace_id", "")),
+        "message": "Token is valid"
     }
