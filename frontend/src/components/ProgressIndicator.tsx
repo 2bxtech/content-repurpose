@@ -16,7 +16,7 @@ import {
 } from '@mui/icons-material';
 
 interface ProgressIndicatorProps {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
   progress?: number;
   title: string;
   subtitle?: string;
@@ -32,19 +32,19 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 }) => {
   const getStatusConfig = () => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return {
           color: 'success' as const,
           icon: <CompleteIcon />,
           label: 'Completed'
         };
-      case 'failed':
+      case 'FAILED':
         return {
           color: 'error' as const,
           icon: <ErrorIcon />,
           label: 'Failed'
         };
-      case 'processing':
+      case 'PROCESSING':
         return {
           color: 'primary' as const,
           icon: <ProcessingIcon />,
@@ -83,7 +83,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           />
         </Box>
         
-        {status === 'processing' && (
+        {status === 'PROCESSING' && (
           <Box sx={{ mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="body2">Progress</Typography>

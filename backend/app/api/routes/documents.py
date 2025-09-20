@@ -182,9 +182,10 @@ async def upload_document(
             await workspace_service.clear_workspace_context(db)
 
     else:
-        # Fallback to in-memory storage
+        # Fallback to in-memory storage with proper UUID
+        document_uuid = uuid.uuid4()
         document = {
-            "id": document_id_counter,
+            "id": str(document_uuid),  # Use UUID string instead of integer
             "user_id": current_user["id"],
             "title": title,
             "description": description,
@@ -202,9 +203,20 @@ async def upload_document(
         }
 
         DOCUMENTS_DB.append(document)
-        document_id_counter += 1
-
-        return document
+        
+        # Return proper Document model with UUID
+        return Document(
+            id=document_uuid,
+            user_id=uuid.UUID(current_user["id"]),
+            title=title,
+            description=description,
+            file_path=file_path,
+            original_filename=file.filename,
+            content_type=file.content_type,
+            status=DocumentStatus.COMPLETED,
+            created_at=document["created_at"],
+            updated_at=document["updated_at"],
+        )
 
 
 @router.get("/documents", response_model=DocumentList)
@@ -314,17 +326,23 @@ async def get_document(
             await workspace_service.clear_workspace_context(db)
 
     else:
-        # Fallback to in-memory storage - convert UUID to int for compatibility
-        try:
-            doc_id = int(str(document_id))
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-
+        # Fallback to in-memory storage - search by UUID string
+        document_id_str = str(document_id)
+        
         for doc in DOCUMENTS_DB:
-            if doc["id"] == doc_id and doc["user_id"] == current_user["id"]:
-                return doc
+            if doc["id"] == document_id_str and doc["user_id"] == current_user["id"]:
+                return Document(
+                    id=uuid.UUID(doc["id"]),
+                    user_id=uuid.UUID(doc["user_id"]),
+                    title=doc["title"],
+                    description=doc["description"],
+                    file_path=doc["file_path"],
+                    original_filename=doc["original_filename"],
+                    content_type=doc["content_type"],
+                    status=doc["status"],
+                    created_at=doc["created_at"],
+                    updated_at=doc["updated_at"],
+                )
 
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
@@ -389,16 +407,11 @@ async def get_document_preview(
             await workspace_service.clear_workspace_context(db)
 
     else:
-        # Fallback to in-memory storage
-        try:
-            doc_id = int(str(document_id))
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-
+        # Fallback to in-memory storage - search by UUID string
+        document_id_str = str(document_id)
+        
         for doc in DOCUMENTS_DB:
-            if doc["id"] == doc_id and doc["user_id"] == current_user["id"]:
+            if doc["id"] == document_id_str and doc["user_id"] == current_user["id"]:
                 preview_path = doc.get("preview_path")
                 if preview_path:
                     full_preview_path = os.path.join(settings.UPLOAD_DIR, preview_path)
@@ -463,16 +476,11 @@ async def get_document_content(
             await workspace_service.clear_workspace_context(db)
 
     else:
-        # Fallback to in-memory storage
-        try:
-            doc_id = int(str(document_id))
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-
+        # Fallback to in-memory storage - search by UUID string
+        document_id_str = str(document_id)
+        
         for doc in DOCUMENTS_DB:
-            if doc["id"] == doc_id and doc["user_id"] == current_user["id"]:
+            if doc["id"] == document_id_str and doc["user_id"] == current_user["id"]:
                 return {
                     "document_id": doc["id"],
                     "title": doc["title"],
@@ -534,16 +542,11 @@ async def delete_document(
             await workspace_service.clear_workspace_context(db)
 
     else:
-        # Fallback to in-memory storage
-        try:
-            doc_id = int(str(document_id))
-        except:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-            )
-
+        # Fallback to in-memory storage - search by UUID string
+        document_id_str = str(document_id)
+        
         for i, doc in enumerate(DOCUMENTS_DB):
-            if doc["id"] == doc_id and doc["user_id"] == current_user["id"]:
+            if doc["id"] == document_id_str and doc["user_id"] == current_user["id"]:
                 # Delete the file
                 if os.path.exists(doc["file_path"]):
                     os.remove(doc["file_path"])
@@ -555,3 +558,34 @@ async def delete_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
+
+
+# CORS OPTIONS handlers for documents endpoints
+@router.options("/documents/upload")
+async def documents_upload_options():
+    """Handle CORS preflight for document upload"""
+    return {"message": "OK"}
+
+
+@router.options("/documents")
+async def documents_list_options():
+    """Handle CORS preflight for documents list"""
+    return {"message": "OK"}
+
+
+@router.options("/documents/{document_id}")
+async def documents_detail_options():
+    """Handle CORS preflight for document details"""
+    return {"message": "OK"}
+
+
+@router.options("/documents/{document_id}/preview")
+async def documents_preview_options():
+    """Handle CORS preflight for document preview"""
+    return {"message": "OK"}
+
+
+@router.options("/documents/{document_id}/content")
+async def documents_content_options():
+    """Handle CORS preflight for document content"""
+    return {"message": "OK"}

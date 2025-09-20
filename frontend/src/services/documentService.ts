@@ -16,7 +16,7 @@ export const getUserDocuments = async (): Promise<DocumentList> => {
   return response.data;
 };
 
-export const getDocument = async (id: number): Promise<Document> => {
+export const getDocument = async (id: string): Promise<Document> => {
   const response = await api.get<Document>(`/documents/${id}`);
   return response.data;
 };

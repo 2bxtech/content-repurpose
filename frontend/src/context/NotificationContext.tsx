@@ -51,13 +51,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
   React.useEffect(() => {
     if (lastMessage?.type === 'transformation_update') {
       const { status } = lastMessage.data;
-      if (status === 'completed') {
+      if (status === 'COMPLETED') {
         addNotification({
           message: 'Transformation completed successfully!',
           type: 'success',
           duration: 5000
         });
-      } else if (status === 'failed') {
+      } else if (status === 'FAILED') {
         addNotification({
           message: 'Transformation failed. Please try again.',
           type: 'error',

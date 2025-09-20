@@ -1,6 +1,6 @@
 // User and Authentication types
 export interface User {
-  id: number;
+  id: string;
   email: string;
   username: string;
   is_active: boolean;
@@ -22,15 +22,15 @@ export interface AuthToken {
 
 // Document types
 export enum DocumentStatus {
-  PENDING = "pending",
-  PROCESSING = "processing",
-  COMPLETED = "completed",
-  FAILED = "failed"
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED"
 }
 
 export interface Document {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   title: string;
   description?: string;
   file_path: string;
@@ -48,19 +48,19 @@ export interface DocumentList {
 
 // Transformation types
 export enum TransformationType {
-  BLOG_POST = "blog_post",
-  SOCIAL_MEDIA = "social_media",
-  EMAIL_SEQUENCE = "email_sequence",
-  NEWSLETTER = "newsletter",
-  SUMMARY = "summary",
-  CUSTOM = "custom"
+  BLOG_POST = "BLOG_POST",
+  SOCIAL_MEDIA = "SOCIAL_MEDIA",
+  EMAIL_SEQUENCE = "EMAIL_SEQUENCE",
+  NEWSLETTER = "NEWSLETTER",
+  SUMMARY = "SUMMARY",
+  CUSTOM = "CUSTOM"
 }
 
 export enum TransformationStatus {
-  PENDING = "pending",
-  PROCESSING = "processing",
-  COMPLETED = "completed",
-  FAILED = "failed"
+  PENDING = "PENDING",
+  PROCESSING = "PROCESSING",
+  COMPLETED = "COMPLETED",
+  FAILED = "FAILED"
 }
 
 export interface TransformationParameters {
@@ -68,9 +68,9 @@ export interface TransformationParameters {
 }
 
 export interface Transformation {
-  id: number;
-  user_id: number;
-  document_id: number;
+  id: string;
+  user_id: string;
+  document_id: string;
   transformation_type: TransformationType;
   parameters: TransformationParameters;
   status: TransformationStatus;
@@ -85,7 +85,7 @@ export interface TransformationList {
 }
 
 export interface TransformationCreate {
-  document_id: number;
+  document_id: string;
   transformation_type: TransformationType;
   parameters: TransformationParameters;
 }

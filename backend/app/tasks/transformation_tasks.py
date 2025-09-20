@@ -13,7 +13,7 @@ import httpx
 
 from app.core.celery_app import celery_app
 from app.core.config import settings
-from app.models.transformations import TransformationType, TransformationStatus
+from app.models.transformation import TransformationType, TransformationStatus
 from app.db.models.transformation import Transformation as TransformationDB
 from app.services.workspace_service import workspace_service
 from app.services.ai_providers import get_ai_provider_manager, AIProviderError

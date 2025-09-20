@@ -61,6 +61,17 @@ class RedisService:
             pass
         return False
 
+    async def health_check(self) -> bool:
+        """Async health check for Redis connection"""
+        try:
+            if self.redis_client:
+                self.redis_client.ping()
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Redis health check failed: {str(e)}")
+            return False
+
     # Token blacklisting
     def blacklist_token(self, token_jti: str, expires_at: datetime) -> bool:
         """Add token to blacklist"""

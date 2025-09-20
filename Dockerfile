@@ -1,6 +1,10 @@
 # Dockerfile for Content Repurpose API
 FROM python:3.12-slim
 
+# Prevent Python from writing bytecode files and ensure unbuffered output
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 # Set working directory
 WORKDIR /app
 

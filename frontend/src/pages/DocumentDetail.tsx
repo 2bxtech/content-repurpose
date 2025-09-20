@@ -22,13 +22,13 @@ const DocumentDetail: React.FC = () => {
       
       try {
         setLoading(true);
-        const documentData = await getDocument(parseInt(id));
+        const documentData = await getDocument(id);
         setDocument(documentData);
         
         const transformationsData = await getUserTransformations();
         // Filter for transformations related to this document
         const documentTransformations = transformationsData.transformations.filter(
-          t => t.document_id === parseInt(id)
+          t => t.document_id === id
         );
         setTransformations(documentTransformations);
       } catch (err: any) {
@@ -44,11 +44,11 @@ const DocumentDetail: React.FC = () => {
 
   const getStatusColor = (status: DocumentStatus) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return 'success';
-      case 'processing':
+      case 'PROCESSING':
         return 'warning';
-      case 'failed':
+      case 'FAILED':
         return 'error';
       default:
         return 'default';

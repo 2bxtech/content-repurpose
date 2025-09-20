@@ -37,11 +37,11 @@ const Dashboard: React.FC = () => {
 
   const getStatusColor = (status: DocumentStatus | TransformationStatus) => {
     switch (status) {
-      case 'completed':
+      case 'COMPLETED':
         return 'success';
-      case 'processing':
+      case 'PROCESSING':
         return 'warning';
-      case 'failed':
+      case 'FAILED':
         return 'error';
       default:
         return 'default';
