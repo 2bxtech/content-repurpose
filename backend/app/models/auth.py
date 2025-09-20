@@ -1,15 +1,13 @@
+"""
+Authentication models for Content Repurpose API
+"""
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
-from enum import Enum
 import uuid
 
-
-class UserRole(str, Enum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    MEMBER = "member"
-    VIEWER = "viewer"
+from app.models.base import UserRole
 
 
 class UserBase(BaseModel):
@@ -46,11 +44,6 @@ class UserCreate(UserBase):
         return v
 
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-
 class User(UserBase):
     id: uuid.UUID
     is_active: bool = True
@@ -61,6 +54,18 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class UserProfile(BaseModel):
+    id: uuid.UUID
+    email: EmailStr
+    username: str
+    is_active: bool
+    is_verified: bool
+    role: UserRole
+    created_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    active_sessions: int = 0
 
 
 class Token(BaseModel):
@@ -79,21 +84,6 @@ class TokenData(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
-
-
-class UserSession(BaseModel):
-    user_id: uuid.UUID
-    refresh_token_jti: str
-    created_at: datetime
-    last_activity: datetime
-    device_info: Dict[str, Any]
-
-
-class DeviceInfo(BaseModel):
-    user_agent: Optional[str] = None
-    ip_address: Optional[str] = None
-    device_type: Optional[str] = None
-    browser: Optional[str] = None
 
 
 class LogoutRequest(BaseModel):
@@ -122,20 +112,16 @@ class PasswordChangeRequest(BaseModel):
         return v
 
 
-class UserProfile(BaseModel):
-    id: uuid.UUID
-    email: EmailStr
-    username: str
-    is_active: bool
-    is_verified: bool
-    role: UserRole
-    created_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
-    active_sessions: int = 0  # Number of active sessions
+class DeviceInfo(BaseModel):
+    user_agent: Optional[str] = None
+    ip_address: Optional[str] = None
+    device_type: Optional[str] = None
+    browser: Optional[str] = None
 
 
-class RateLimitInfo(BaseModel):
-    allowed: bool
-    remaining: int
-    reset_time: int
-    limit_type: str
+class UserSession(BaseModel):
+    user_id: uuid.UUID
+    refresh_token_jti: str
+    created_at: datetime
+    last_activity: datetime
+    device_info: Dict[str, Any]

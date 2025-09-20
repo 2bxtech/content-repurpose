@@ -137,10 +137,29 @@ class Settings(BaseSettings):
         return f"{driver}://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
 
     # CORS settings
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-    ]
+    CORS_ORIGINS: List[str] = Field(
+        default=[
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:8000", 
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:8000",
+            "http://0.0.0.0:3000",
+            "http://0.0.0.0:3001",
+            "http://0.0.0.0:8000"
+        ]
+    )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS_ORIGINS from environment variable if provided"""
+        if isinstance(v, str):
+            # Split by comma and strip whitespace
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+            return origins
+        return v
 
     # File upload settings
     UPLOAD_DIR: str = "uploads"
