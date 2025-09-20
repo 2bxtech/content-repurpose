@@ -11,7 +11,7 @@ report.html
 report.json
 
 # Documentation and Planning (exclude from version control - but allow specific docs)
-docs/
+dev-notes/
 *.txt
 *.MD
 *.docx
@@ -20,13 +20,9 @@ docs/
 *.patch
 *.PATCH
 
-# Allow specific documentation files that don't contain sensitive info
-!testing/diagnostics/README.md
-!docs/BULLETPROOF_TESTING_FRAMEWORK.md
-!docs/ENTERPRISE_ENHANCEMENTS_COMPLETE.md
-!docs/STRATEGIC_RESPONSE_TO_CLAUDE_FEEDBACK.md
-!docs/CLAUDE_ONLINE_REVIEW_REQUEST.md
-!docs/PR_DESCRIPTION_GUIDE.md
+# Allow public documentation
+!docs/
+!docs/*.md
 
 # Python Backend
 __pycache__/
