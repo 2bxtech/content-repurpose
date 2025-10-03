@@ -25,6 +25,7 @@ markers = [
     "redis: Redis tests",
     "docker: Docker integration tests",
     "smoke: Smoke tests",
+    "schema: Schema validation tests",
     "slow: Slow running tests",
     "skip_ci: Skip in CI environment"
 ]

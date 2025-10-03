@@ -24,11 +24,14 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="session", autouse=False)  # Not auto-used, must be explicitly requested
 async def api_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """
     Simple HTTP client for API testing.
     Assumes test API is already running on port 8002.
+    
+    Note: Tests must explicitly request this fixture to use it.
+    Schema validation tests don't request it, so they won't try to connect to API.
     """
     timeout = httpx.Timeout(30.0)
 
@@ -85,11 +88,13 @@ async def authenticated_client(
     yield api_client
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=False)  # Changed to False - only runs when explicitly needed
 async def cleanup_test_data(api_client: httpx.AsyncClient):
     """
     Clean up test data before and after each test.
     This assumes your API has cleanup endpoints or test workspace isolation.
+    
+    Note: Tests must explicitly request this fixture to enable auto-cleanup.
     """
     # Setup: Clean before test
     yield
