@@ -35,6 +35,9 @@ class User(BaseModel):
     transformations = relationship(
         "Transformation", back_populates="user", lazy="select"
     )
+    transformation_presets = relationship(
+        "TransformationPreset", back_populates="user", lazy="select"
+    )
 
     # Performance indexes
     __table_args__ = (

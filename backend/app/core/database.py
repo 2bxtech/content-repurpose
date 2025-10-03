@@ -6,7 +6,6 @@ from sqlalchemy.pool import QueuePool
 from sqlalchemy import text
 from .config import settings
 import logging
-import asyncio
 
 logger = logging.getLogger(__name__)
 

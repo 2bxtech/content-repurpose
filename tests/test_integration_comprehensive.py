@@ -4,24 +4,13 @@ Tests the complete flow between frontend services and backend APIs.
 """
 
 import pytest
-import asyncio
-import json
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
-from fastapi import UploadFile
 import io
 
 from app.main import app
-from app.api.routes.documents import upload_document, get_user_documents
-from app.api.routes.transformations import create_transformation
-from app.api.routes.websockets import websocket_endpoint
 from app.core.websocket_manager import manager
-from app.services.task_service import task_service
 from app.models.documents import DocumentStatus
-from app.models.transformations import TransformationType, TransformationStatus
 
 
 class TestUploadIntegration:

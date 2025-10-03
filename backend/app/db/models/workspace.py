@@ -34,6 +34,9 @@ class Workspace(BaseModel, WorkspaceMixin):
     transformations = relationship(
         "Transformation", back_populates="workspace", lazy="select"
     )
+    transformation_presets = relationship(
+        "TransformationPreset", back_populates="workspace", lazy="select"
+    )
 
     # Performance indexes
     __table_args__ = (
