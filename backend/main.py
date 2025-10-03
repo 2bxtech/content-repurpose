@@ -238,6 +238,20 @@ async def root():
         ]
     }
 
+# Debug endpoint to list all routes
+@app.get("/api/debug/routes")
+async def list_routes():
+    """List all registered routes for debugging"""
+    routes_info = []
+    for route in app.routes:
+        if hasattr(route, "methods") and hasattr(route, "path"):
+            routes_info.append({
+                "path": route.path,
+                "methods": list(route.methods) if route.methods else [],
+                "name": route.name if hasattr(route, "name") else "unknown"
+            })
+    return {"total": len(routes_info), "routes": routes_info}
+
 # Enhanced health check endpoint
 @app.get("/api/health")
 async def health():
@@ -302,6 +316,15 @@ try:
     logger.info("✅ Transformations router loaded successfully")
 except Exception as e:
     logger.error(f"❌ Failed to load transformations router: {e}")
+
+try:
+    from app.api.routes.transformation_presets import router as transformation_presets_router
+    logger.info(f"📋 Transformation Presets router has {len(transformation_presets_router.routes)} routes")
+    app.include_router(transformation_presets_router, prefix="/api/transformation-presets", tags=["transformation-presets"])
+    routers_loaded.append("transformation-presets")
+    logger.info("✅ Transformation Presets router loaded successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to load transformation presets router: {e}", exc_info=True)
 
 try:
     from app.api.routes.documents import router as documents_router

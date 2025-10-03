@@ -106,17 +106,32 @@ Multi-tenant backend with async task processing, real-time WebSocket features, a
 
 The application includes working Dashboard and Document Detail pages:
 
+
 ### Dashboard View
 Recent documents and transformations with API integration and workspace isolation.
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/857bf259-276e-40f9-9989-ee6d922f30b6" />
+
 
 ### Document Detail View  
 Document processing with transformation options and results display.
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/08bcab8c-2f12-45e9-835d-3aee5914402d" />
+
 
 ### Transformation Results
 Transformation workflow with multiple content types (summaries, bullets, headlines, social posts).
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/885aeaed-e299-445e-8265-620fe91086e1" />
+
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/2f115607-1fee-4df2-b1ec-8b0ed94b091e" />
+
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/762f96c7-e14c-4948-814d-2317bcf5ed45" />
+
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/a59d07d5-8313-4f86-b643-ac4b21d9fe70" />
+
 
 ### API Documentation
 Swagger UI with transformation endpoints, authentication, and multi-tenant support.
+<img width="1920" height="945" alt="image" src="https://github.com/user-attachments/assets/2b8248e4-c834-4503-becb-06a7b17f2e91" />
+
 
 ## Next Phase
 
