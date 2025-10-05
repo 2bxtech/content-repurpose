@@ -21,6 +21,7 @@ from app.models.transformation import (
 from app.db.models.transformation import Transformation as TransformationDB
 from app.db.models.document import Document as DocumentDB
 from app.db.models.workspace import Workspace
+from app.db.models.transformation_preset import TransformationPreset as TransformationPresetDB
 from app.api.routes.auth import get_current_active_user
 from app.api.routes.workspaces import get_current_workspace_context
 from app.core.database import get_db_session
@@ -82,13 +83,51 @@ async def create_transformation(
                 detail="Document not found or access denied"
             )
         
+        # Load preset parameters if preset_id provided
+        final_parameters = transformation.parameters or {}
+        if transformation.preset_id:
+            preset_stmt = (
+                select(TransformationPresetDB)
+                .where(
+                    and_(
+                        TransformationPresetDB.id == transformation.preset_id,
+                        TransformationPresetDB.workspace_id == workspace_id,
+                        TransformationPresetDB.deleted_at.is_(None)
+                    )
+                )
+            )
+            preset_result = await db.execute(preset_stmt)
+            preset = preset_result.scalar_one_or_none()
+            
+            if not preset:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Preset {transformation.preset_id} not found or access denied"
+                )
+            
+            # Verify preset type matches transformation type
+            if preset.transformation_type != transformation.transformation_type:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Preset type {preset.transformation_type} does not match requested type {transformation.transformation_type}"
+                )
+            
+            # Merge parameters: preset base + request overrides
+            final_parameters = {**preset.parameters, **final_parameters}
+            
+            # Increment preset usage count
+            preset.usage_count += 1
+            db.add(preset)
+            
+            logger.info(f"Applied preset {preset.id} ({preset.name}) to transformation")
+        
         # Create transformation with immediate completion (demo mode)
         transformation_data = {
             "workspace_id": workspace_id,
             "user_id": user_id,
             "document_id": transformation.document_id,
             "transformation_type": transformation.transformation_type,
-            "parameters": transformation.parameters or {},
+            "parameters": final_parameters,
             "status": TransformationStatus.COMPLETED,
             "result": _generate_demo_result(transformation, document),
             "created_at": datetime.utcnow(),

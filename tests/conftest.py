@@ -24,7 +24,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session", autouse=False)  # Not auto-used, must be explicitly requested
+@pytest.fixture(scope="function", autouse=False)  # Changed to function scope
 async def api_client() -> AsyncGenerator[httpx.AsyncClient, None]:
     """
     Simple HTTP client for API testing.
@@ -51,33 +51,44 @@ async def api_client() -> AsyncGenerator[httpx.AsyncClient, None]:
         yield client
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")  # Changed to function scope
 async def authenticated_client(
     api_client: httpx.AsyncClient,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     """
     API client with authentication token.
     """
-    # Create test user and get token
+    # Create test user and get token with unique email for each test
+    import uuid
+    test_id = str(uuid.uuid4())[:8]
     test_user = {
-        "username": "testuser",
-        "email": "test@example.com",
-        "password": "testpassword123",
+        "username": f"testuser_{test_id}",
+        "email": f"test_{test_id}@example.com",
+        "password": "TestPassword123!",  # Must meet password requirements
     }
 
-    # Register user (might fail if already exists, that's ok)
-    try:
-        await api_client.post("/api/auth/register", json=test_user)
-    except:
-        pass  # User might already exist
+    # Register user
+    register_resp = await api_client.post("/api/auth/register", json=test_user)
+    if register_resp.status_code != 201:
+        pytest.fail(f"Failed to register test user: {register_resp.status_code} - {register_resp.text}")
 
-    # Login to get token
-    login_data = {"username": test_user["username"], "password": test_user["password"]}
+    # Login to get token (using /token endpoint with form data)
+    # OAuth2 username field should contain the email
+    login_data = {"username": test_user["email"], "password": test_user["password"]}
 
-    response = await api_client.post("/api/auth/login", data=login_data)
+    # OAuth2 requires form-urlencoded, not JSON
+    response = await api_client.post(
+        "/api/auth/token", 
+        data=login_data,
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
 
     if response.status_code != 200:
-        pytest.fail(f"Failed to authenticate test user: {response.status_code}")
+        try:
+            error_detail = response.json()
+            pytest.fail(f"Failed to authenticate test user: {response.status_code} - {error_detail}")
+        except Exception:
+            pytest.fail(f"Failed to authenticate test user: {response.status_code}")
 
     token_data = response.json()
     access_token = token_data["access_token"]
