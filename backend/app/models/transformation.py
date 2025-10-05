@@ -71,6 +71,7 @@ class TransformationCreate(BaseModel):
     document_id: uuid.UUID
     transformation_type: TransformationType
     parameters: Dict[str, Any] = Field(default={}, description="Transformation parameters")
+    preset_id: Optional[uuid.UUID] = Field(None, description="Optional preset ID to load parameters from")
 
 
 class Transformation(BaseModel):
