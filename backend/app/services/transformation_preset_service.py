@@ -38,10 +38,10 @@ async def create_preset(
     if result.scalar_one_or_none():
         raise ValueError(f"Preset with name '{preset_data.name}' already exists in this workspace")
     
-    # Create preset
+    # Create preset (keep user_id for ownership tracking even when shared)
     preset = TransformationPreset(
         workspace_id=workspace_id,
-        user_id=user_id if not preset_data.is_shared else None,
+        user_id=user_id,
         name=preset_data.name,
         description=preset_data.description,
         transformation_type=preset_data.transformation_type.value,

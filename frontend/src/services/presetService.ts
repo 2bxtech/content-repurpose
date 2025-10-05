@@ -26,7 +26,7 @@ export const createPreset = async (data: PresetCreate): Promise<PresetResponse> 
 
 // Update existing preset (owner only)
 export const updatePreset = async (id: string, data: PresetUpdate): Promise<PresetResponse> => {
-  const response = await api.put<PresetResponse>(`/transformation-presets/${id}`, data);
+  const response = await api.patch<PresetResponse>(`/transformation-presets/${id}`, data);
   return response.data;
 };
 
