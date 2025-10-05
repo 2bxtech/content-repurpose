@@ -40,7 +40,7 @@ class EnhancedCORSMiddleware(BaseHTTPMiddleware):
             if origin and origin in self.allowed_origins:
                 response.headers["access-control-allow-origin"] = origin
                 response.headers["access-control-allow-credentials"] = "true"
-                response.headers["access-control-allow-methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+                response.headers["access-control-allow-methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
                 response.headers["access-control-allow-headers"] = "Content-Type, Authorization, Accept, Origin, X-Requested-With"
                 response.headers["access-control-max-age"] = "3600"
             return response
@@ -117,7 +117,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 

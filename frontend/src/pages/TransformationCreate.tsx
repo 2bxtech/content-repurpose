@@ -80,9 +80,11 @@ const TransformationCreatePage: React.FC = () => {
     setSelectedPresetId(presetId);
     
     if (preset) {
-      // Merge preset parameters with any existing user modifications
-      // User modifications take precedence
-      setParameters(prev => ({ ...preset.parameters, ...prev }));
+      // Apply preset parameters (preset values override any existing form values)
+      setParameters({ ...preset.parameters });
+    } else {
+      // If no preset selected, reset to default parameters for current type
+      setParameters(getInitialParameters(transformationType));
     }
   };
   
