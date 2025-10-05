@@ -138,36 +138,46 @@ const TransformationDetail: React.FC = () => {
     setEditMode(false);
   };
 
-  const exportAsFile = (format: 'txt' | 'md' | 'html') => {
-    if (!transformation || !transformation.result) return;
-    
-    let content = transformation.result;
-    let mimeType = 'text/plain';
-    let fileExtension = 'txt';
-    
-    if (format === 'html') {
-      // Use non-null assertion and type casting
-      const tempElement = (document as any).createElement('div');
-      tempElement.innerHTML = transformation.result.replace(/\n/g, '<br>');
-      content = tempElement.innerHTML;
-      mimeType = 'text/html';
-      fileExtension = 'html';
-    } else if (format === 'md') {
-      mimeType = 'text/markdown';
-      fileExtension = 'md';
+  const exportAsFile = (format: 'txt' | 'md') => {
+    if (!transformation || !transformation.result) {
+      console.error('No transformation result to export');
+      return;
     }
     
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    
-    // Use non-null assertion and type casting
-    const a = (document as any).createElement('a');
-    a.href = url;
-    a.download = `transformation_${transformation.id}.${fileExtension}`;
-    (document as any).body.appendChild(a);
-    a.click();
-    (document as any).body.removeChild(a);
-    URL.revokeObjectURL(url);
+    try {
+      let content = transformation.result;
+      let mimeType = 'text/plain';
+      let fileExtension = 'txt';
+      
+      if (format === 'md') {
+        mimeType = 'text/markdown';
+        fileExtension = 'md';
+      }
+      
+      // Create filename using document title or transformation ID
+      const baseFilename = document?.title 
+        ? document.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+        : `transformation_${transformation.id}`;
+      
+      const filename = `${baseFilename}.${fileExtension}`;
+      
+      // Create blob and download
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      window.document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      window.document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting file:', err);
+      setError('Failed to export file. Please try again.');
+    }
   };
 
   const getStatusColor = (status: TransformationStatus) => {
