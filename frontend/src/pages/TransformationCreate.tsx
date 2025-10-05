@@ -3,11 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container, Typography, Box, Paper, FormControl, InputLabel,
   MenuItem, Select, TextField, Button, Alert, CircularProgress,
-  Divider, SelectChangeEvent} from '@mui/material';
+  Divider, SelectChangeEvent, IconButton, Tooltip} from '@mui/material';
+import { Save as SaveIcon } from '@mui/icons-material';
 import { getDocument } from '../services/documentService';
 import { createTransformation } from '../services/transformationService';
-import { TransformationType, Document } from '../types';
+import { TransformationType, Document, PresetResponse } from '../types';
 import type { TransformationCreate } from '../types';
+import PresetSelector from '../components/PresetSelector';
+import PresetForm from '../components/PresetForm';
+import { useCreatePreset } from '../hooks/usePresets';
 
 const TransformationCreatePage: React.FC = () => {
   const { documentId } = useParams<{ documentId: string }>();
@@ -16,10 +20,15 @@ const TransformationCreatePage: React.FC = () => {
   const [document, setDocument] = useState<Document | null>(null);
   const [transformationType, setTransformationType] = useState<TransformationType>(TransformationType.BLOG_POST);
   const [parameters, setParameters] = useState<Record<string, any>>({});
+  const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [documentLoading, setDocumentLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // "Save as Preset" dialog state
+  const [savePresetDialogOpen, setSavePresetDialogOpen] = useState(false);
+  const createPresetMutation = useCreatePreset();
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -63,6 +72,27 @@ const TransformationCreatePage: React.FC = () => {
     const newType = event.target.value as TransformationType;
     setTransformationType(newType);
     setParameters(getInitialParameters(newType));
+    // Reset preset selection when type changes
+    setSelectedPresetId(null);
+  };
+  
+  const handlePresetSelect = (presetId: string | null, preset: PresetResponse | null) => {
+    setSelectedPresetId(presetId);
+    
+    if (preset) {
+      // Merge preset parameters with any existing user modifications
+      // User modifications take precedence
+      setParameters(prev => ({ ...preset.parameters, ...prev }));
+    }
+  };
+  
+  const handleSaveAsPreset = () => {
+    setSavePresetDialogOpen(true);
+  };
+  
+  const handlePresetFormSubmit = async (data: any) => {
+    await createPresetMutation.mutateAsync(data);
+    setSavePresetDialogOpen(false);
   };
 
   const handleParameterChange = (key: string, value: any) => {
@@ -83,7 +113,8 @@ const TransformationCreatePage: React.FC = () => {
       const transformationData: TransformationCreate = {
         document_id: document.id,
         transformation_type: transformationType,
-        parameters: parameters
+        parameters: parameters,
+        preset_id: selectedPresetId || undefined
       };
       
       const result = await createTransformation(transformationData);
@@ -292,8 +323,26 @@ const TransformationCreatePage: React.FC = () => {
             </Select>
           </FormControl>
           
-          <Box sx={{ mt: 3 }}>
+          <PresetSelector
+            transformationType={transformationType}
+            selectedPresetId={selectedPresetId || undefined}
+            onPresetSelect={handlePresetSelect}
+            disabled={loading}
+          />
+          
+          <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="h6">Parameters</Typography>
+            <Tooltip title="Save current parameters as a preset for future use">
+              <IconButton
+                size="small"
+                onClick={handleSaveAsPreset}
+                color="primary"
+              >
+                <SaveIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <Box sx={{ mt: 1 }}>
             {renderParametersForm()}
           </Box>
           
@@ -308,6 +357,17 @@ const TransformationCreatePage: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+      
+      {/* Save as Preset Dialog */}
+      <PresetForm
+        open={savePresetDialogOpen}
+        onClose={() => setSavePresetDialogOpen(false)}
+        onSubmit={handlePresetFormSubmit}
+        mode="create"
+        loading={createPresetMutation.isLoading}
+        transformationType={transformationType}
+        initialParameters={parameters}
+      />
     </Container>
   );
 };

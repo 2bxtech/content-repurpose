@@ -88,4 +88,40 @@ export interface TransformationCreate {
   document_id: string;
   transformation_type: TransformationType;
   parameters: TransformationParameters;
+  preset_id?: string; // Optional preset ID to load parameters from
+}
+
+// Transformation Preset types
+export interface PresetCreate {
+  name: string;
+  description?: string;
+  transformation_type: TransformationType;
+  parameters: TransformationParameters;
+  is_shared: boolean;
+}
+
+export interface PresetUpdate {
+  name?: string;
+  description?: string;
+  parameters?: TransformationParameters;
+  is_shared?: boolean;
+}
+
+export interface PresetResponse {
+  id: string;
+  workspace_id: string;
+  user_id: string;
+  name: string;
+  description?: string;
+  transformation_type: TransformationType;
+  parameters: TransformationParameters;
+  is_shared: boolean;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PresetList {
+  presets: PresetResponse[];
+  count: number;
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Container } from '@mui/material';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Enhanced context providers
 import { AuthProvider } from './context/AuthContext';
@@ -22,20 +23,33 @@ import DocumentUpload from './pages/DocumentUpload';
 import DocumentDetail from './pages/DocumentDetail';
 import TransformationCreate from './pages/TransformationCreate';
 import TransformationDetail from './pages/TransformationDetail';
+import Presets from './pages/Presets';
 // import AdminDashboard from './pages/AdminDashboard'; // Will create this next
+
+// Create a client for React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <AccessibilityProvider>
-        <CustomThemeProvider>
-          <AuthProvider>
-            {/* WebSocket provider with auth integration - will be enhanced */}
-            <NotificationProvider>
-              <Router>
-                <NavBar />
-                <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                  <Routes>
+      <QueryClientProvider client={queryClient}>
+        <AccessibilityProvider>
+          <CustomThemeProvider>
+            <AuthProvider>
+              {/* WebSocket provider with auth integration - will be enhanced */}
+              <NotificationProvider>
+                <Router>
+                  <NavBar />
+                  <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+                    <Routes>
                     {/* Public routes */}
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
@@ -91,6 +105,14 @@ const App: React.FC = () => {
                         </ProtectedRoute>
                       }
                     />
+                    <Route
+                      path="/presets"
+                      element={
+                        <ProtectedRoute>
+                          <Presets />
+                        </ProtectedRoute>
+                      }
+                    />
                     
                     {/* Fallback route */}
                     <Route path="*" element={<Navigate to="/" replace />} />
@@ -101,6 +123,7 @@ const App: React.FC = () => {
           </AuthProvider>
         </CustomThemeProvider>
       </AccessibilityProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 };
