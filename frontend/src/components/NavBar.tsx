@@ -20,7 +20,8 @@ import {
   SettingsBrightness as SystemIcon,
   Dashboard as DashboardIcon,
   Upload as UploadIcon,
-  Logout as LogoutIcon
+  Logout as LogoutIcon,
+  Bookmarks as PresetsIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -80,6 +81,12 @@ const NavBar: React.FC = () => {
       ctrl: true,
       action: () => navigate('/documents/upload'),
       description: 'Upload document'
+    },
+    {
+      key: 'p',
+      ctrl: true,
+      action: () => navigate('/presets'),
+      description: 'Manage presets'
     }
   ] : [];
 
@@ -197,6 +204,23 @@ const NavBar: React.FC = () => {
                 }}
               >
                 Upload
+              </Button>
+            </Tooltip>
+            
+            <Tooltip title="Presets (Ctrl+P)">
+              <Button 
+                color="inherit" 
+                component={RouterLink} 
+                to="/presets"
+                startIcon={<PresetsIcon />}
+                sx={{ 
+                  color: 'text.primary',
+                  '&:hover': {
+                    backgroundColor: 'action.hover'
+                  }
+                }}
+              >
+                Presets
               </Button>
             </Tooltip>
 
