@@ -1,5 +1,10 @@
 # Content Repurposing Tool .gitignore
 
+# IDE and Editor Settings
+.claude/
+.vscode/settings.json
+.idea/
+
 # Testing and diagnostic files (contain personal system information)
 testing/diagnostics/*.json
 testing/results/*.json

@@ -132,12 +132,12 @@ class AnthropicProvider(BaseAIProvider):
             raise AIProviderError(f"Anthropic provider error: {str(e)}", "anthropic")
 
     def get_available_models(self) -> List[AIModelInfo]:
-        """Get available Anthropic models"""
+        """Get available Anthropic models (using aliases that auto-update to latest snapshots)"""
         return [
             AIModelInfo(
-                name="claude-3-5-sonnet-20241022",
-                display_name="Claude 3.5 Sonnet",
-                max_tokens=8192,
+                name="claude-sonnet-4-5",  # Alias auto-points to 20250929 snapshot
+                display_name="Claude Sonnet 4.5",
+                max_tokens=64000,  # Updated max output tokens
                 cost_per_1k_input_tokens=0.003,
                 cost_per_1k_output_tokens=0.015,
                 capabilities=[
@@ -151,11 +151,11 @@ class AnthropicProvider(BaseAIProvider):
                 supports_function_calling=True,
             ),
             AIModelInfo(
-                name="claude-3-sonnet-20240229",
-                display_name="Claude 3 Sonnet",
-                max_tokens=4096,
-                cost_per_1k_input_tokens=0.003,
-                cost_per_1k_output_tokens=0.015,
+                name="claude-haiku-4-5",  # Alias auto-points to 20251001 snapshot
+                display_name="Claude Haiku 4.5",
+                max_tokens=64000,  # Updated max output tokens
+                cost_per_1k_input_tokens=0.001,  # Updated pricing from docs
+                cost_per_1k_output_tokens=0.005,  # Updated pricing from docs
                 capabilities=[
                     ModelCapability.TEXT_GENERATION,
                     ModelCapability.CONVERSATION,
@@ -164,28 +164,12 @@ class AnthropicProvider(BaseAIProvider):
                 ],
                 context_window=200000,
                 supports_streaming=True,
-                supports_function_calling=False,
+                supports_function_calling=True,
             ),
             AIModelInfo(
-                name="claude-3-haiku-20240307",
-                display_name="Claude 3 Haiku",
-                max_tokens=4096,
-                cost_per_1k_input_tokens=0.00025,
-                cost_per_1k_output_tokens=0.00125,
-                capabilities=[
-                    ModelCapability.TEXT_GENERATION,
-                    ModelCapability.CONVERSATION,
-                    ModelCapability.CONTENT_CREATION,
-                    ModelCapability.SUMMARIZATION,
-                ],
-                context_window=200000,
-                supports_streaming=True,
-                supports_function_calling=False,
-            ),
-            AIModelInfo(
-                name="claude-3-opus-20240229",
-                display_name="Claude 3 Opus",
-                max_tokens=4096,
+                name="claude-opus-4-1",  # Alias auto-points to 20250805 snapshot
+                display_name="Claude Opus 4.1",
+                max_tokens=32000,  # Max output tokens for Opus
                 cost_per_1k_input_tokens=0.015,
                 cost_per_1k_output_tokens=0.075,
                 capabilities=[
@@ -196,13 +180,13 @@ class AnthropicProvider(BaseAIProvider):
                 ],
                 context_window=200000,
                 supports_streaming=True,
-                supports_function_calling=False,
+                supports_function_calling=True,
             ),
         ]
 
     def get_default_model(self) -> str:
-        """Get default Anthropic model"""
-        return "claude-3-5-sonnet-20241022"
+        """Get default Anthropic model (Sonnet 4.5 for best balance of intelligence, speed, cost)"""
+        return "claude-sonnet-4-5"
 
     def estimate_cost(self, input_tokens: int, output_tokens: int, model: str) -> float:
         """Estimate cost for Anthropic model usage"""
@@ -210,8 +194,8 @@ class AnthropicProvider(BaseAIProvider):
         model_info = models.get(model)
 
         if not model_info:
-            # Fallback to Claude 3 Haiku pricing (cheapest)
-            model_info = models.get("claude-3-haiku-20240307")
+            # Fallback to Claude Sonnet 4.5 pricing (default model)
+            model_info = models.get("claude-sonnet-4-5")
 
         if model_info:
             input_cost = (input_tokens / 1000) * model_info.cost_per_1k_input_tokens
@@ -223,9 +207,9 @@ class AnthropicProvider(BaseAIProvider):
     async def validate_api_key(self) -> bool:
         """Validate Anthropic API key by making a test request"""
         try:
-            # Make a minimal test request
+            # Make a minimal test request with fastest model
             self.client.messages.create(
-                model="claude-3-haiku-20240307",
+                model="claude-haiku-4-5",  # Fastest model for validation
                 max_tokens=1,
                 messages=[{"role": "user", "content": "test"}],
             )

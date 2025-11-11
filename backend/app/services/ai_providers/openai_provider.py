@@ -123,6 +123,38 @@ class OpenAIProvider(BaseAIProvider):
         """Get available OpenAI models"""
         return [
             AIModelInfo(
+                name="gpt-5",
+                display_name="GPT-5",
+                max_tokens=32768,
+                cost_per_1k_input_tokens=0.010,
+                cost_per_1k_output_tokens=0.030,
+                capabilities=[
+                    ModelCapability.TEXT_GENERATION,
+                    ModelCapability.CONVERSATION,
+                    ModelCapability.CONTENT_CREATION,
+                    ModelCapability.SUMMARIZATION,
+                ],
+                context_window=256000,
+                supports_streaming=True,
+                supports_function_calling=True,
+            ),
+            AIModelInfo(
+                name="gpt-5-mini",
+                display_name="GPT-5 Mini",
+                max_tokens=16384,
+                cost_per_1k_input_tokens=0.0002,
+                cost_per_1k_output_tokens=0.0008,
+                capabilities=[
+                    ModelCapability.TEXT_GENERATION,
+                    ModelCapability.CONVERSATION,
+                    ModelCapability.CONTENT_CREATION,
+                    ModelCapability.SUMMARIZATION,
+                ],
+                context_window=256000,
+                supports_streaming=True,
+                supports_function_calling=True,
+            ),
+            AIModelInfo(
                 name="gpt-4o",
                 display_name="GPT-4o",
                 max_tokens=4096,
@@ -154,43 +186,11 @@ class OpenAIProvider(BaseAIProvider):
                 supports_streaming=True,
                 supports_function_calling=True,
             ),
-            AIModelInfo(
-                name="gpt-4-turbo",
-                display_name="GPT-4 Turbo",
-                max_tokens=4096,
-                cost_per_1k_input_tokens=0.01,
-                cost_per_1k_output_tokens=0.03,
-                capabilities=[
-                    ModelCapability.TEXT_GENERATION,
-                    ModelCapability.CONVERSATION,
-                    ModelCapability.CONTENT_CREATION,
-                    ModelCapability.SUMMARIZATION,
-                ],
-                context_window=128000,
-                supports_streaming=True,
-                supports_function_calling=True,
-            ),
-            AIModelInfo(
-                name="gpt-3.5-turbo",
-                display_name="GPT-3.5 Turbo",
-                max_tokens=4096,
-                cost_per_1k_input_tokens=0.0005,
-                cost_per_1k_output_tokens=0.0015,
-                capabilities=[
-                    ModelCapability.TEXT_GENERATION,
-                    ModelCapability.CONVERSATION,
-                    ModelCapability.CONTENT_CREATION,
-                    ModelCapability.SUMMARIZATION,
-                ],
-                context_window=16385,
-                supports_streaming=True,
-                supports_function_calling=True,
-            ),
         ]
 
     def get_default_model(self) -> str:
         """Get default OpenAI model"""
-        return "gpt-4o-mini"
+        return "gpt-5-mini"
 
     def estimate_cost(self, input_tokens: int, output_tokens: int, model: str) -> float:
         """Estimate cost for OpenAI model usage"""
@@ -198,8 +198,8 @@ class OpenAIProvider(BaseAIProvider):
         model_info = models.get(model)
 
         if not model_info:
-            # Fallback to GPT-4o-mini pricing
-            model_info = models.get("gpt-4o-mini")
+            # Fallback to GPT-5-mini pricing
+            model_info = models.get("gpt-5-mini")
 
         if model_info:
             input_cost = (input_tokens / 1000) * model_info.cost_per_1k_input_tokens
@@ -211,9 +211,9 @@ class OpenAIProvider(BaseAIProvider):
     async def validate_api_key(self) -> bool:
         """Validate OpenAI API key by making a test request"""
         try:
-            # Make a minimal test request
+            # Make a minimal test request with cheapest/fastest model
             await self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-5-mini",  # Cheapest current model for validation
                 messages=[{"role": "user", "content": "test"}],
                 max_tokens=1,
             )
