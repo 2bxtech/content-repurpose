@@ -98,8 +98,8 @@ class AIProviderManager:
                 priority=1 if settings.AI_PROVIDER == "openai" else 2,
                 max_requests_per_minute=60,
                 max_cost_per_hour=50.0,
-                preferred_models=["gpt-4o-mini", "gpt-4o"],
-                fallback_models=["gpt-3.5-turbo"],
+                preferred_models=["gpt-5-mini", "gpt-5"],
+                fallback_models=["gpt-4o-mini", "gpt-4o"],
             )
             self.providers["openai"] = OpenAIProvider(api_key=settings.OPENAI_API_KEY)
 
@@ -113,10 +113,10 @@ class AIProviderManager:
                 max_requests_per_minute=50,
                 max_cost_per_hour=100.0,
                 preferred_models=[
-                    "claude-3-5-sonnet-20241022",
-                    "claude-3-sonnet-20240229",
+                    "claude-sonnet-4-5",  # Default model for best balance
+                    "claude-haiku-4-5",   # Fast/cheap alternative
                 ],
-                fallback_models=["claude-3-haiku-20240307"],
+                fallback_models=["claude-opus-4-1"],  # Premium model for complex tasks
             )
             self.providers["anthropic"] = AnthropicProvider(
                 api_key=settings.CLAUDE_API_KEY
